@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ソウル 行きたいお店MAP</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#f5f0eb;--dark:#1a1410;--accent:#c0392b;--gold:#c9a84c;--soft:#8b7355}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+.header{background:var(--dark);color:var(--cream);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:2px solid var(--gold)}
+.header-title{font-family:'Playfair Display',serif;font-size:17px;letter-spacing:.05em}
+.header-sub{font-size:10px;color:var(--gold);letter-spacing:.15em;text-transform:uppercase;margin-top:1px}
+.header-count{margin-left:auto;background:var(--accent);color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;flex-shrink:0}
+
+.tabs{background:var(--dark);display:flex;overflow-x:auto;padding:0 12px 10px;flex-shrink:0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);transition:all .2s;margin-right:5px}
+.tab.active{background:var(--gold);color:var(--dark);border-color:var(--gold)}
+
+#map{flex:1}
+
+.gps-btn{position:fixed;bottom:28px;right:16px;z-index:5;width:50px;height:50px;border-radius:50%;background:#fff;border:none;box-shadow:0 4px 18px rgba(0,0,0,.25);cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center}
+.gps-btn.located{background:#e8f5e9}
+
+.toast{position:fixed;top:108px;left:50%;transform:translateX(-50%) translateY(-16px);background:var(--dark);color:#fff;padding:7px 16px;border-radius:20px;font-size:11px;font-weight:500;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.overlay{position:fixed;inset:0;background:rgba(26,20,16,.55);z-index:1999;opacity:0;pointer-events:none;transition:opacity .3s}
+.overlay.active{opacity:1;pointer-events:all}
+
+.panel{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;padding:0 18px 28px;z-index:2000;max-height:75vh;overflow-y:auto;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);box-shadow:0 -8px 36px rgba(0,0,0,.22)}
+.panel.open{transform:translateY(0)}
+.handle{width:38px;height:4px;background:#ddd;border-radius:4px;margin:11px auto 16px}
+
+.ph{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.pemoji{font-size:30px;flex-shrink:0;width:50px;height:50px;background:var(--cream);border-radius:13px;display:flex;align-items:center;justify-content:center}
+.ptitle{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--dark);line-height:1.2}
+.pname-en{font-size:10px;color:var(--soft);margin-top:2px}
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.badge{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:500}
+.bc{background:#fef9f0;color:#c9a84c;border:1px solid #f0d9a0}
+.bh{background:#fff0f0;color:#c0392b;border:1px solid #f0b0b0}
+.bw{background:#fff8e8;color:#d35400;border:1px solid #f0c080}
+.bd{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
+
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+.ibox{background:#fafafa;border-radius:11px;padding:11px;border:1px solid #f0ece6}
+.ibox-label{font-size:10px;color:var(--soft);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.ibox-val{font-size:12px;color:var(--dark);line-height:1.4}
+
+.dsec{background:linear-gradient(135deg,#fdf6f0,#fff);border-radius:11px;padding:13px;margin-bottom:12px;border-left:3px solid var(--gold)}
+.dlabel{font-size:10px;color:var(--gold);letter-spacing:.15em;text-transform:uppercase;margin-bottom:5px;font-weight:700}
+.dtext{font-size:13px;color:#444;line-height:1.7}
+
+.wsec{background:linear-gradient(135deg,#fff5f0,#fff);border-radius:11px;padding:13px;margin-bottom:12px;border-left:3px solid var(--accent)}
+.wlabel{font-size:10px;color:var(--accent);letter-spacing:.15em;text-transform:uppercase;margin-bottom:5px;font-weight:700}
+.wtext{font-size:13px;color:#444;line-height:1.7}
+
+.nsec{background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border-radius:11px;padding:12px;margin-bottom:12px;border-left:3px solid #43a047}
+.nlabel{font-size:10px;color:#2e7d32;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:7px}
+.nitem{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#333;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer}
+.nitem:last-child{border-bottom:none}
+.nitem-dist{color:#43a047;font-weight:600;font-size:11px}
+
+.note-box{background:#fff8e8;border-radius:9px;padding:9px 13px;margin-bottom:11px;font-size:12px;color:#d35400;border:1px solid #f0d080}
+
+.ctsec{border-radius:11px;padding:13px;margin-bottom:12px;border:2px solid}
+.ctsec.ok{background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border-color:#43a047}
+.ctsec.ng{background:#fafafa;border-color:#ddd}
+.ctsec.unknown{background:linear-gradient(135deg,#fff8e8,#fffde7);border-color:#ffd54f}
+.ct-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px}
+.ctsec.ok .ct-label{color:#2e7d32}
+.ctsec.ng .ct-label{color:#757575}
+.ctsec.unknown .ct-label{color:#f57f17}
+.ct-text{font-size:13px;color:#333;line-height:1.6}
+.ct-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;margin-top:8px;background:#2e7d32;color:#fff;border:none;border-radius:9px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:600;text-decoration:none}
+
+.subway-box{background:#e8eaf6;border-radius:11px;padding:11px 13px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px}
+.subway-icon{font-size:20px;flex-shrink:0}
+.subway-label{font-size:10px;font-weight:700;color:#3949ab;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.subway-text{font-size:13px;color:#333;line-height:1.5}
+
+.action-row{display:flex;gap:8px;margin-bottom:12px}
+.action-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 8px;border-radius:11px;font-family:'Noto Sans JP',sans-serif;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;border:none}
+.btn-gmap{background:#4285f4;color:#fff}
+.btn-ig{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff}
+.btn-ig-dis{background:#e0e0e0;color:#9e9e9e}
+
+.calc-sec{background:#fffde7;border-radius:11px;padding:13px;margin-bottom:12px;border:2px solid #ffd54f}
+.calc-label{font-size:10px;font-weight:700;color:#f57f17;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.calc-row{display:flex;align-items:center;gap:8px}
+.calc-input{flex:1;padding:9px 12px;border:1.5px solid #ffd54f;border-radius:9px;font-family:'Noto Sans JP',sans-serif;font-size:15px;font-weight:600;background:#fff;outline:none;min-width:0}
+.calc-result{flex:1;padding:9px 12px;border:1.5px solid #ffd54f;border-radius:9px;background:#fff9c4;font-size:15px;font-weight:700;color:#e65100;min-width:0;text-align:right}
+.calc-note{font-size:10px;color:#999;margin-top:5px;text-align:right}
+
+.src-link{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px;background:#fafafa;color:var(--soft);border:1.5px solid #e8e2d8;border-radius:11px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:500;text-decoration:none;margin-bottom:8px}
+.close-btn{display:block;width:100%;padding:13px;background:var(--dark);color:#fff;border:none;border-radius:11px;font-family:'Noto Sans JP',sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-top:4px}
+
+/* Memo */
+.memo-page{position:fixed;inset:0;background:var(--cream);z-index:3000;display:none;flex-direction:column;overflow:hidden}
+.memo-page.open{display:flex}
+.memo-header{background:var(--dark);color:var(--cream);padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:2px solid var(--gold);flex-shrink:0}
+.memo-header-title{font-family:'Playfair Display',serif;font-size:17px}
+.memo-header-sub{font-size:10px;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;margin-top:1px}
+.memo-close{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.3);color:var(--cream);padding:5px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'Noto Sans JP',sans-serif}
+.memo-body{flex:1;overflow-y:auto;padding:16px}
+.memo-item{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:4px solid var(--gold)}
+.memo-item-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.memo-item-emoji{font-size:22px;flex-shrink:0}
+.memo-item-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--dark);flex:1;line-height:1.3}
+.memo-map-btn{flex-shrink:0;background:var(--accent);color:#fff;border:none;padding:5px 10px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap}
+.memo-item-text{font-size:13px;color:#444;line-height:1.8;white-space:pre-line}
+.memo-item-area{display:inline-block;font-size:10px;background:#fef9f0;color:var(--gold);border:1px solid #f0d9a0;padding:2px 8px;border-radius:20px;margin-bottom:6px;font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">🗺️</span>
+      <div>
+        <div class="header-title">ソウル 行きたいお店</div>
+        <div class="header-sub">Seoul Travel MAP</div>
+      </div>
+    </div>
+  </div>
+  <button onclick="openMemo()" style="background:none;border:1px solid rgba(255,255,255,.3);color:var(--cream);padding:5px 10px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-right:6px;flex-shrink:0">📝 メモ</button>
+  <div class="header-count" id="countBadge">0件</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="filterCat('all',this)">すべて</div>
+  <div class="tab" onclick="filterCat('cafe',this)">☕ カフェ</div>
+  <div class="tab" onclick="filterCat('bakery',this)">🥐 ベーカリー</div>
+  <div class="tab" onclick="filterCat('food',this)">🍽️ グルメ</div>
+  <div class="tab" onclick="filterCat('shop',this)">🛍️ ショップ</div>
+</div>
+
+<div id="map"></div>
+<button class="gps-btn" id="gpsBtn" onclick="locateMe()">📍</button>
+<div class="toast" id="toast"></div>
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<div class="panel" id="panel">
+  <div class="handle"></div>
+  <div id="panelContent"></div>
+  <button class="close-btn" onclick="closePanel()">✕ 閉じる</button>
+</div>
+
+<div class="memo-page" id="memoPage">
+  <div class="memo-header">
+    <div>
+      <div class="memo-header-title">📝 旅メモ</div>
+      <div class="memo-header-sub">おすすめコメント集</div>
+    </div>
+    <button class="memo-close" onclick="closeMemo()">✕ 閉じる</button>
+  </div>
+  <div class="memo-body" id="memoBody"></div>
+</div>
+
+<script>
+const stores = [
+  {id:1,name:"Hello Kitty Cafe",nameEn:"Hello Kitty Apple Cafe Myeongdong",emoji:"🎀",cat:"cafe",
+   lat:37.5626124,lng:126.9844789,
+   hours:"10:00〜22:00（年中無休）",address:"中区 明洞6キル 15（明洞）",
+   desc:"明洞のど真ん中にあるハローキティテーマカフェ。3階建てで2階がカフェ、3階がグッズショップ。キティデザインのドリンク＆スイーツで写真映え抜群。CATCHTABLE（アプリ）で整理券取得がおすすめ。",
+   wait:"⏱️ 午後は行列あり。30分待ちも。開店直後か平日午前中が狙い目。",isHot:true,
+   area:"明洞",url:"https://s.tabelog.com/southkorea/A5301/A530101/53000343/",subway:"4号線 明洞駅 6番出口 徒歩3分",ig:"hkac_kr",gmap:"https://maps.google.com/?q=37.5626124,126.9844789",catchtable:{status:'unknown',note:'入口タブレット（CATCHTABLE）で当日の整理券発行あり。事前予約は不可。午後は30分待ちになることも。',url:''}},
+
+  {id:2,name:"テラスルーム系レストラン",nameEn:"Seoul Terrace Room Restaurant",emoji:"🌿",cat:"food",
+   lat:37.5255,lng:127.0380,
+   hours:"要確認（インスタ参照）",address:"狎鴎亭エリア",
+   desc:"テラス付きのおしゃれなレストランカフェ。インテリアがエレガントで女子旅・デートに最適。料理はカフェ風ブランチ〜ディナーまで幅広い。",
+   wait:"",isHot:false,
+   area:"狎鴎亭",url:"https://kouhei-elmundo.com/seoul-terraceroom-restaurant/",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩5分",ig:"",gmap:"https://maps.google.com/?q=37.5255,127.0380",catchtable:{status:'unknown',note:'詳細不明。インスタグラム等で最新情報を確認推奨。',url:''}},
+
+  {id:3,name:"エルメスカフェ MAISON HERMÈS",nameEn:"Hermès Cafe Matin Seoul",emoji:"🧡",cat:"cafe",
+   lat:37.5283,lng:127.0275,
+   hours:"11:00〜20:00（要確認）",address:"江南区 狎鴎亭路 （島山公園近く）",
+   desc:"日本未上陸のエルメス公式カフェ。狎鴎亭エリアの島山公園近くに位置する。アフタヌーンティーが特に人気で要予約。エルメスの世界観を体感できる唯一無二の空間。価格は高めだが体験価値は絶大。",
+   wait:"⏱️ 予約必須。週末は数週間前から埋まることも。公式サイトで要事前確認。",isHot:true,
+   area:"狎鴎亭",url:"https://ameblo.jp/everydaysmile27/entry-12943838039.html",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩8分",ig:"",gmap:"https://maps.google.com/?q=37.5283,127.0275",catchtable:{status:'ng',note:'予約不可・ウォークインのみ。テーブル約10席のみ。アフタヌーンティーは平日14:00以降がスムーズ。開店直後（11時）が最も入りやすい。',url:''}},
+
+  {id:4,name:"Benson Creamery Seoul",nameEn:"Benson Creamery Seoul Apgujeong",emoji:"🍦",cat:"cafe",
+   lat:37.526111799999995,lng:127.03983660000002,
+   hours:"平日 11:00〜22:00 / 金土 11:00〜23:00",address:"江南区 宣陵路 829",
+   desc:"狎鴎亭ロデオの人気アイスクリームカフェ。クリーミーでなめらかなアイスが絶品。テイストサンプルが可能なのでフレーバー選びも楽しい。開放的なインテリアとパステルな内装が可愛い。",
+   wait:"⏱️ 週末は並ぶことあり。平日は比較的入りやすい。",isHot:false,
+   area:"狎鴎亭",url:"https://creatrip.com/ja/blog/14866",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩3分",ig:"benson_creamery",gmap:"https://maps.google.com/?q=37.526111799999995,127.03983660000002",catchtable:{status:'ng',note:'予約不可・ウォークインのみ。平日は比較的空いている。',url:''}},
+
+  {id:5,name:"BACHA COFFEE",nameEn:"Bacha Coffee Cheongdam Flagship",emoji:"☕",cat:"cafe",
+   lat:37.5265907,lng:127.04407450000001,
+   hours:"10:30〜20:00（年中無休）",address:"江南区 狎鴎亭路 432（ギャラリア向かい）",
+   desc:"シンガポール発のラグジュアリーカフェ。200種類以上のコーヒーを揃える。1階がショップ（コーヒー・チョコ・グッズ）、2階がカフェ。ゴールドの内装が豪華でアフタヌーンティーも人気。",
+   wait:"⏱️ 入店時に少し並ぶことも。席間隔が広くゆったり。平日午前〜昼がおすすめ。",isHot:false,
+   area:"狎鴎亭",url:"https://www.spark-dr.co.jp/2025/05/22/bachacoffee_seoul/#index_id1",subway:"7号線 清潭駅 1番出口 徒歩10分 / 盆唐線 狎鴎亭ロデオ駅 徒歩15分",ig:"bachacoffeekr",gmap:"https://maps.google.com/?q=37.5265907,127.04407450000001",catchtable:{status:'ok',note:'CATCHTABLEで予約・ウェイティング可能。席数に余裕があるため通常は待ち少ない。',url:'https://www.catchtable.net/shop/bachacoffeekr'}},
+
+  {id:6,name:"MY FAVORITE COOKIETERIA",nameEn:"My Favorite Cookieteria Garosu-gil",emoji:"🍪",cat:"bakery",
+   lat:37.5233906,lng:127.02336349999999,
+   hours:"10:00〜21:00（年中無休）",address:"江南区 狎鴎亭路14キル 15（カロスキル）",
+   desc:"釜山発の人気クッキー専門店のソウル・カロスキル店。アメリカンスタイルのひとくちサイズから大判クッキーまで豊富なラインナップ。ダークチョコ・ピーナッツバター・抹茶など多彩なフレーバー。焼きたてをその場で食べるのが至福。カロスキル散策のお供に最適。",
+   wait:"⏱️ 通常は待ちなし。テイクアウト中心で回転は速い。",isHot:false,
+   area:"カロスキル",note:"⚠️ 狎鴎亭ではなくカロスキル（新沙洞）エリアです",
+   url:"https://www.seoulnavi.com/food/7384/",
+   subway:"3号線 新沙駅 8番出口 徒歩10分",ig:"myfavoritecookieteria",
+   gmap:"https://maps.google.com/?q=37.5233906,127.02336349999999",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}},
+
+  {id:7,name:"清潭スンドゥブ",nameEn:"Cheongdam Soondubu",emoji:"🍲",cat:"food",
+   lat:37.5243976,lng:127.0384426,
+   hours:"24時間営業",address:"江南区 清潭洞（狎鴎亭エリア）",
+   desc:"ニコラス・ケイジも訪れた名店。スンドゥブ（豆腐チゲ）とカルビが人気。24時間営業で深夜の〆にも使えるソウルの定番グルメスポット。英語メニューあり。",
+   wait:"⏱️ 昼夜問わず混雑することあり。深夜は比較的空いている。",isHot:true,
+   area:"狎鴎亭",url:"https://ameblo.jp/waimanalobeach/entry-11465162609.html",subway:"盆唐線 狎鴎亭ロデオ駅 徒歩12分 / タクシー推奨",ig:"",gmap:"https://maps.google.com/?q=37.5243976,127.0384426",catchtable:{status:'ng',note:'予約不可・ウォークインのみ。24時間営業なので深夜が穴場。',url:''}},
+
+  {id:8,name:"チャントッテ キムチチゲ",nameEn:"Jangdokdae Kimchijjigae Cheongdam",emoji:"🫕",cat:"food",
+   lat:37.5242104,lng:127.05282629999998,
+   hours:"要確認（変動あり）",address:"江南区 島山大路94キル 33 1F",
+   desc:"清潭洞の人気キムチチゲ専門店。豚肉がたっぷり入ったキムチチゲが絶品でコスパ良好。バレーパーキングあり。ヌードル追加や卵追加などトッピングも充実。",
+   wait:"⏱️ 昼・夕方は並ぶことも。回転は比較的速い。",isHot:false,
+   area:"清潭洞",url:"https://4travel.jp/os_shisetsu/10391729",subway:"7号線 清潭駅 1番出口 徒歩8分",ig:"",gmap:"https://maps.google.com/?q=37.5242104,127.05282629999998",catchtable:{status:'ng',note:'予約不可・ウォークインのみ。バレーパーキングあり。',url:''}},
+
+  {id:9,name:"Fleurs sur la Route",nameEn:"Fleurs sur la Route Apgujeong",emoji:"🌸",cat:"food",
+   lat:37.5271434,lng:127.0364866,
+   hours:"要確認（インスタ参照）",address:"江南区 狎鴎亭路46キル 23",
+   desc:"噴水のある美しいインテリアのヨーロッパ風レストラン。ピザ・パスタが好評。夜のライティングが特に映える。カップルや女子旅のディナーに最適な雰囲気。",
+   wait:"⏱️ 夜は混雑。予約推奨。",isHot:false,
+   area:"狎鴎亭",url:"https://kaorikorea.com/post/fleurs-sur-la-route/",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩5分",ig:"fleurssurlaroute",gmap:"https://maps.google.com/?q=37.5271434,127.0364866",catchtable:{status:'ok',note:'CATCHTABLEで予約・ウェイティング受付あり。夜の混雑前に事前登録がおすすめ。',url:'https://www.catchtable.net/shop/fleurssurlaroute'}},
+
+  {id:10,name:"韓国グルメ旅ブログ紹介店",nameEn:"Seoul Gourmet Blog Spots",emoji:"🍜",cat:"food",
+   lat:37.5250,lng:127.0370,
+   hours:"要確認",address:"狎鴎亭〜清潭洞エリア",
+   desc:"ブログで紹介されたソウルの人気グルメスポット。狎鴎亭〜清潭洞エリアの名店が集結。現地ならではの美味しいお店が揃っている。",
+   wait:"",isHot:false,
+   area:"狎鴎亭",url:"https://cirquesewing.wordpress.com/2024/07/03/%E9%9F%93%E5%9B%BD%E3%81%AB%E8%A1%8C%E3%81%A3%E3%81%A6%E3%81%8D%E3%81%BE%E3%81%97%E3%81%9F%E2%91%A3%E3%82%B0%E3%83%AB%E3%83%A1/",subway:"盆唐線 狎鴎亭ロデオ駅 徒歩10分",ig:"",gmap:"https://maps.google.com/?q=37.5250,127.0370",catchtable:{status:'unknown',note:'詳細不明。訪問前にインスタ等で確認推奨。',url:''}},
+
+  {id:11,name:"신사전 / Sinsajeon",nameEn:"Sinsajeon",emoji:"🥞",cat:"food",
+   lat:37.5186621,lng:127.0226954,
+   hours:"11:00〜翌1:00（年中無休）",address:"江南区 島山大路11キル 18（新沙洞）",
+   desc:"チヂミ＆マッコリの人気店。牛肉・海鮮など種類豊富なチヂミと蜂蜜マッコリが名物。タブレット注文で英語対応あり。外国人旅行者にも大人気。ドラマ的雰囲気の庶民的居酒屋スタイル。",
+   wait:"⏱️ 夕方6〜8時は30〜60分待ちが発生。雨の日はさらに込む。回転は早め。",isHot:true,
+   area:"新沙洞",url:"https://life-in-korea.net/sinsajeon/#toc2",subway:"3号線 新沙駅 8番出口 徒歩8分 / カロスキル方面",ig:"sinsajeon_official",gmap:"https://maps.google.com/?q=37.5186621,127.0226954",catchtable:{status:'ok',note:'CATCHTABLEでウェイティング登録が可能。夕方6〜8時は特に混雑するので到着前にアプリで番号取りを！',url:'https://www.catchtable.net/shop/sinsajeon_sinsa'}},
+
+  {id:12,name:"Panier de M.mooni",nameEn:"Mooni Apgujeong",emoji:"🎀",cat:"cafe",
+   lat:37.526758799999996,lng:127.03971819999998,
+   hours:"10:00〜22:00（年中無休）",address:"江南区 狎鴎亭路56キル 16",
+   desc:"リボンと花がモチーフの大型カフェ。パリジャンスタイルのおしゃれな内装で夜はウォームライティングで更に映える。屋上テラスが人気で複数フロアあり席数多め。フィグパイやミルクティーが人気。",
+   wait:"⏱️ 週末は混雑するが入れないほどではない。テラス席は早い者勝ち。",isHot:false,
+   area:"狎鴎亭",url:"https://jp.trip.com/moments/detail/gangnam-gu-2016458-119853219/",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩5分",ig:"panier.de.m.mooni",gmap:"https://maps.google.com/?q=37.526758799999996,127.03971819999998",catchtable:{status:'ng',note:'予約不可・ウォークインのみ。複数フロアで席数多めなので比較的入りやすい。',url:''}},
+
+  {id:13,name:"Teddy Beurre House",nameEn:"Teddy Beurre House The Hyundai Seoul",emoji:"🐻",cat:"bakery",
+   lat:37.5260497,lng:126.928296,
+   hours:"平日 10:30〜20:00 / 金土 10:30〜20:30",address:"永登浦区 汝矣大路 108（ザ現代ソウル内）",
+   desc:"龍理団キルで大行列の人気クロワッサン専門店がザ現代ソウル内に出店。チュロスクロワッサン、ドーナツクロワッサンなど独創的な形が揃う。コーン＆エッグクロワッサンが絶品。",
+   wait:"⏱️ 開店直後と閉店前は比較的空いている。昼はデパート内でも行列あり。",isHot:true,
+   area:"汝矣島",note:"⚠️ 狎鴎亭ではなくザ現代ソウル（汝矣島）内です",
+   url:"https://www.seoulnavi.com/food/7248/",subway:"5号線 汝矣島駅 3番出口 直結 / ザ現代ソウル内",ig:"teddy.beurre.house",gmap:"https://maps.google.com/?q=37.5260497,126.928296",catchtable:{status:'ng',note:'予約不可・ウォークインのみ。ザ現代ソウル内のため開店直後推奨。',url:''}},
+
+  {id:14,name:"チュロ101",nameEn:"Churro 101 Hongdae",emoji:"🍭",cat:"cafe",
+   lat:37.5556852,lng:126.9242635,
+   hours:"11:00〜22:00（年中無休）",address:"麻浦区 ウルマダン路 128（弘大）",
+   desc:"弘大で大人気のチュロス専門店。外カリカリ・中もちもちの揚げたてチュロスが絶品。チョコ・クリームチーズなど具材入りが名物。アイスクリームとのセットも人気。",
+   wait:"⏱️ 常に人が集まっている。テイクアウトなので回転は速い。5分待ち程度。",isHot:false,
+   area:"弘大",note:"⚠️ 狎鴎亭ではなく弘大エリアです",
+   url:"https://ameblo.jp/waimanalobeach/entry-12852525383.html",subway:"2号線 弘大入口駅 9番出口 徒歩5分",ig:"",gmap:"https://maps.google.com/?q=37.5556852,126.9242635",catchtable:{status:'ng',note:'テイクアウト専門のため予約不要。数分待ちで受け取れる。',url:''}},
+
+  {id:15,name:"LAZY YOGURT",nameEn:"Lazy Yogurt Gangnam",emoji:"🥣",cat:"cafe",
+   lat:37.49366,lng:127.03101600000001,
+   hours:"10:00〜20:00（年中無休）",address:"江南区 駅三路 109（江南）",
+   desc:"本格グリークヨーグルトの人気カフェ。超クリーミーで濃厚なヨーグルトにグラノーラ・フルーツ・ナッツをトッピング。シーズナルフレーバーあり。テイクアウト可能。",
+   wait:"⏱️ テイクアウトメインなので回転は速い。",isHot:false,
+   area:"江南",note:"⚠️ 狎鴎亭よりやや南の江南エリアです",
+   url:"https://ameblo.jp/seoul-2021/entry-12945536978.html",subway:"2号線・新盆唐線 江南駅 12番出口 徒歩3分",ig:"",gmap:"https://maps.google.com/?q=37.49366,127.03101600000001",catchtable:{status:'ng',note:'テイクアウト中心のため予約不要。回転は速い。',url:''}},
+
+  {id:16,name:"DOTORI GARDEN",nameEn:"Dotori Garden Anguk",emoji:"🌰",cat:"cafe",
+   lat:37.578066899999996,lng:126.9862696,
+   hours:"8:00〜23:00（年中無休）",address:"鐘路区 桂洞キル 19-8（安国駅近く）",
+   desc:"どんぐり（ドトリ）をモチーフにした大人気カフェ。本格グリークヨーグルトボウルが名物でジブリ音楽が流れる癒し空間。北村韓屋村エリアで観光がてら立ち寄れる。アカイ・ハチミツかけヨーグルト必食。",
+   wait:"⏱️ 週末は並ぶことも。開店の8時〜9時が比較的空いている。",isHot:true,
+   area:"安国/北村",note:"⚠️ 狎鴎亭ではなく安国・北村エリアです",
+   url:"https://creatrip.com/ja/blog/13575",subway:"3号線 安国駅 1番出口 徒歩5分",ig:"reel/DYwFf0Zvtca/?igsh=eXUwcjBjcWRtbmJ1",gmap:"https://maps.google.com/?q=37.578066899999996,126.9862696",catchtable:{status:'ok',note:'CATCHTABLEで予約・ウェイティング可能（ドトリガーデン安国）。週末の混雑期は必ず事前登録を。開店8時〜9時台が比較的空いている。',url:'https://www.catchtable.net/shop/dotorigarden_anguk'}},
+
+  {id:17,name:"茶틀 / cha teul（三清洞）",nameEn:"Cha Teul Samcheong-dong",emoji:"🍵",cat:"cafe",
+   lat:37.5819,lng:126.9818,
+   hours:"11:00〜21:00",address:"鐘路区 三清洞エリア",
+   desc:"三清洞の伝統的な韓国茶屋。靴を脱いで床に座る本格スタイル。ロータスティーや蒸しかぼちゃ餅などが絶品。北村韓屋村散策と合わせて訪問したい癒し系カフェ。",
+   wait:"⏱️ 週末は混雑。早めの時間帯推奨。",isHot:false,
+   area:"三清洞",note:"⚠️ 狎鴎亭ではなく三清洞エリアです",
+   url:"https://life-in-korea.net/samcheong-dong-cha-teul/",subway:"3号線 安国駅 徒歩10分 / 景福宮駅 徒歩15分",ig:"",gmap:"https://maps.google.com/?q=37.5819,126.9818",catchtable:{status:'unknown',note:'CATCHTABLEへの登録は不明。直接訪問のみの可能性が高い。週末早めの時間帯が安全。',url:''}},
+
+  {id:18,name:"all the ugly cookie & tout le monde",nameEn:"All the Ugly Cookie & Tout le Monde",emoji:"🍪",cat:"bakery",
+   lat:37.545635399999995,lng:126.915933,
+   hours:"12:00〜19:00（年中無休）",address:"麻浦区 土亭路 45-1 2F",
+   desc:"釜山発のデザートカフェ。ピンクでプリンセスな可愛い内装にクッキー・リボンパン・スイーツが揃う。聖水洞・合井洞にも店舗あり。「all the ugly cookie」として人気急上昇中。",
+   wait:"⏱️ 人気スイーツ（リボンパン等）は夕方に売り切れることも。",isHot:false,
+   area:"合井洞",note:"⚠️ 狎鴎亭ではなく合井洞（ハプジョンドン）です",
+   url:"https://ameblo.jp/koreaarex/entry-12830698642.html",subway:"6号線 合井駅 3番出口 徒歩5分",ig:"all_the_ugly_cookie",gmap:"https://maps.google.com/?q=37.545635399999995,126.915933",catchtable:{status:'ng',note:'予約不可・ウォークインのみ。人気スイーツは夕方に売り切れることあり、午前中の訪問推奨。',url:''}},
+
+  {id:19,name:"WIGGLE WIGGLE ZIP 島山",nameEn:"Wiggle Wiggle Dosan",emoji:"🌈",cat:"shop",
+   lat:37.526082599999995,lng:127.03627859999999,
+   hours:"10:00〜20:00（年中無休）",address:"江南区 彦州路168キル 31",
+   desc:"カラフルで独創的なグッズが揃う4階建てフラッグシップストア。逆さまの部屋などユニークなフォトゾーンが充実。アイテムカードを使ったキャッシュレスショッピング。お土産・プレゼントに最適。",
+   wait:"⏱️ 購入は比較的スムーズ。フォトゾーンは混雑する時間帯あり。",isHot:false,
+   area:"狎鴎亭",url:"https://world.nol.com/ja/content/pois/1ff43a9a-2864-45e0-848b-03e85cf1a737",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩3分",ig:"wiggle.wiggle.official",gmap:"https://maps.google.com/?q=37.526082599999995,127.03627859999999",catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}},
+
+  {id:20,name:"ギャラリア百貨店",nameEn:"Galleria Department Store Luxury Hall WEST",emoji:"🏪",cat:"shop",
+   lat:37.528470999999996,lng:127.04007899999999,
+   hours:"平日 10:30〜20:00 / 金土日 10:30〜20:30",address:"江南区 狎鴎亭路 343",
+   desc:"狎鴎亭を代表するラグジュアリー百貨店。地下フードコートが別格（人気店が集結）。EAST館はハイブランド、WEST館はコスメ・ファッション充実。ポップアップイベントも定期開催。ヴァレーパーキングあり。",
+   wait:"⏱️ フードコートは昼・夕方は混雑。ショップはほぼ待ち不要。",isHot:false,
+   area:"狎鴎亭",url:"https://www.seoulnavi.com/shop/611/",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩8分",ig:"",gmap:"https://maps.google.com/?q=37.528470999999996,127.04007899999999",catchtable:{status:'ng',note:'百貨店のため予約不要・ウォークインのみ。',url:''}},
+
+  {id:21,name:"Tamburins HAUS DOSAN",nameEn:"Tamburins Haus Dosan",emoji:"🧴",cat:"shop",
+   lat:37.525321999999996,lng:127.035679,
+   hours:"11:00〜21:00（年中無休）",address:"江南区 狎鴎亭路46キル 50（HAUS DOSAN内）",
+   desc:"Gentle Monster同系列のラグジュアリーコスメ・パルファンブランド。ハンドクリーム・ボディローション・フレグランスが人気。同ビルにGentle Monster・Nudakeカフェも入居し一緒に楽しめる。",
+   wait:"⏱️ 待ちなし。",isHot:false,
+   area:"狎鴎亭",url:"https://www.konest.com/contents/gourmet_mise_detail.html?id=34305",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩5分",ig:"tamburins_official",gmap:"https://maps.google.com/?q=37.525321999999996,127.035679",catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}},
+
+  {id:22,name:"강정이넘치는집（カンジョン菓子）",nameEn:"Gangjeong House Cheongdam",emoji:"🍡",cat:"food",
+   lat:37.518729,lng:127.0486098,
+   hours:"平日 7:00〜22:00 / 週末 9:00〜22:00",address:"江南区 鶴洞路 435 1F",
+   desc:"清潭洞の伝統菓子（カンジョン・薬菓など）の専門店。精製糖を使わずナツメや果物で甘さを出した体に優しいお菓子。双和茶・ナツメ茶など韓方茶も絶品。モダンな雰囲気で伝統と現代が融合。",
+   wait:"⏱️ 通常は待ちなし。ギフトセット予約は数日前がベスト。",isHot:false,
+   area:"清潭洞",url:"https://mimilani.exblog.jp/30463760/",subway:"7号線 清潭駅 2番出口 徒歩15分 / タクシー推奨",ig:"",gmap:"https://maps.google.com/?q=37.518729,127.0486098",catchtable:{status:'ng',note:'予約不可・ウォークインのみ。ギフトセット予約は電話で数日前に。',url:''}},
+
+
+
+  {id:24,name:"Bitte Dosan",nameEn:"Bitte Dosan",emoji:"🐕",cat:"cafe",
+   lat:37.527490799999995,lng:127.03901979999998,
+   hours:"12:00〜18:00（年中無休）",address:"江南区 宣陵路161キル 18 4F",
+   desc:"おしゃれなブランチ＋雑貨が楽しめる狎鴎亭の人気カフェ。2匹の看板犬がいて犬好きにはたまらない空間。4階からの眺めが良く、雑貨も購入可能。朝食・ブランチに最適。",
+   wait:"⏱️ 平日昼間は比較的空いている。週末は混む。",isHot:false,
+   area:"狎鴎亭",url:"https://wanjeon.tv-aichi.co.jp/125-article/",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩5分",ig:"",gmap:"https://maps.google.com/?q=37.527490799999995,127.03901979999998",catchtable:{status:'ng',note:'CATCHTABLE非対応と思われる。ウォークインのみ。',url:''}},
+
+  {id:25,name:"ETOILE（マドレーヌ専門）",nameEn:"Etoile Madeleine Garosu-gil",emoji:"🧁",cat:"bakery",
+   lat:37.5212755,lng:127.02220510000001,
+   hours:"12:30〜21:00（年中無休）",address:"江南区 狎鴎亭路10キル 35 B1F（カロスキル）",
+   desc:"カロスキルにある本格マドレーヌ＆フィナンシエ専門の小さなベーカリー。バターの香りに誘われる名店。抹茶・柚子など多彩なフレーバーで食感は外サクサク内しっとり。2人が限界の小さな店。",
+   wait:"⏱️ 入店待ちの可能性あり。外で待つスタイル。回転は速い。",isHot:false,
+   area:"カロスキル/新沙",url:"https://ameblo.jp/loadtokorea/entry-12952824962.html",subway:"3号線 新沙駅 8番出口 徒歩5分 / カロスキル内",ig:"",gmap:"https://maps.google.com/?q=37.5212755,127.02220510000001",catchtable:{status:'ng',note:'小さなお店のためウォークインのみ。外で待つスタイル。回転は速い。',url:''}},
+
+  {id:26,name:"Mil Toast（ミルトースト）",nameEn:"Mil Toast Ikseon",emoji:"🍞",cat:"cafe",
+   lat:37.57311920000001,lng:126.99034250000001,
+   hours:"8:00〜22:00（年中無休）",address:"鐘路区 水標路28キル 30-3（益善洞）",
+   desc:"古民家をリノベした行列カフェ。せいろで蒸したもちもちスチームパンが名物。コーンパン・スイートポテトパンが特に人気。スローペースなカフェ体験でコーヒーとパンのペアリングを楽しめる。",
+   wait:"⏱️ 常に並んでいる。開店の8時から行列あり。蒸しパンは30分待ちの場合も。平日午後2時頃が比較的マシ。",isHot:true,
+   area:"益善洞",note:"⚠️ 狎鴎亭ではなく益善洞（インサドン近く）です",
+   url:"https://na-na.media/miltoast-kankoku/",subway:"1・3・5号線 鐘路3街駅 4番出口 徒歩5分 / 益善洞入口",ig:"miltoasthouse",gmap:"https://maps.google.com/?q=37.57311920000001,126.99034250000001",catchtable:{status:'ok',note:'CATCHTABLEでウェイティング登録が可能（ミルトースト益善洞）。行列必至なので訪問前に必ずアプリで番号取りを！平日午後2時頃が比較的マシ。',url:'https://www.catchtable.net/shop/miltoast_ikseon'}},
+
+  {id:27,name:"Maison Margiela Flagship Café",nameEn:"Maison Margiela Flagship Hannam Café",emoji:"🤍",cat:"cafe",
+   lat:37.5342306,lng:127.00214330000001,
+   hours:"11:00〜20:00（年中無休）",address:"龍山区 大使館路11キル 8-7（漢南洞）",
+   desc:"Maison Margielaのフラッグシップ内カフェ。ドイツのBonanza Coffeeとのコラボで提供。タビ（足袋）シューズをモチーフにしたムースケーキが名物。白で統一されたクリーンな空間で少人数向け。",
+   wait:"⏱️ 小規模のため混雑する時間帯あり。閉店間際は断られる場合も。",isHot:false,
+   area:"漢南洞",note:"⚠️ 狎鴎亭ではなく漢南洞（ハンナムドン）です",
+   url:"https://ameblo.jp/tanusaru8/entry-12884505670.html",subway:"6号線 漢江鎮駅 1番出口 徒歩8分 / 漢南洞",ig:"maisonmargiela",gmap:"https://maps.google.com/?q=37.5342306,127.00214330000001",catchtable:{status:'ng',note:'マルジェラ旗艦店内カフェのため予約不可・ウォークインのみ。閉店間際（20時前）は入れない場合あり。',url:''}},
+
+  {id:28,name:"Taeyang Gopchang（テヤンコプチャン）",nameEn:"Taeyang Gopchang Seongsu",emoji:"🫙",cat:"food",
+   lat:37.543399699999995,lng:127.0546643,
+   hours:"24時間営業",address:"城東区 聖水洞2街 蓮武場7キル 8-1 1F（聖水洞）",
+   desc:"聖水洞の人気豚ホルモン鍋（コプチャンジョンゴル）専門店。臭みが少なくクリーンな仕上がり。鍋が終わったら残り汁でチャーハンが絶品。スーパーローカルな雰囲気で夕方5時から混雑する。",
+   wait:"⏱️ 5時以降は行列あり。24時間営業なので深夜は穴場。",isHot:false,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞（ソンスドン）です",
+   url:"https://jp.trip.com/moments/detail/seoul-234-137263058/",subway:"2号線 聖水駅 4番出口 徒歩10分",ig:"",gmap:"https://maps.google.com/?q=37.543399699999995,127.0546643",catchtable:{status:'ng',note:'ウォークインのみ・CATCHTABLE非対応。24時間営業なので深夜が穴場。夕方5時以降は混雑。',url:''}},
+
+  {id:29,name:"芳荑豚家（パンイドンガ）",nameEn:"Panyi Donga Samgyeopsal",emoji:"🥓",cat:"food",
+   lat:37.526,lng:127.042,
+   hours:"要確認（インスタ参照）",address:"江南区 清潭洞エリア",
+   desc:"IKKOさんが「世界頂グルメ」で絶賛したサムギョプサル店。TWICEのモモ・サナ、坂口健太郎も来店した芸能人御用達店。厚切りサムギョプサルとチーズたっぷりポックンパ（チャーハン）が名物。",
+   wait:"⏱️ 週末は行列必至。予約できる場合は必ず予約を。",isHot:true,
+   area:"清潭洞",url:"https://luuumu.com/tabi/seoul-ikko-samgyeopsal/",subway:"7号線 清潭駅 1番出口 徒歩15分 / タクシー推奨",ig:"",gmap:"https://maps.google.com/?q=37.526,127.042",catchtable:{status:'ok',note:'CATCHTABLEで予約可能と思われる。週末は必ず事前予約を。NAVER予約でも対応している場合あり。',url:'https://www.catchtable.net/shop/panguidonga'}},
+
+  {id:30,name:"Jeju Rooftop Black BBQ",nameEn:"Jeju Rooftop Black BBQ Apgujeong",emoji:"🔥",cat:"food",
+   lat:37.5264344,lng:127.0364118,
+   hours:"11:00〜15:00 / 16:00〜翌2:00（年中無休）",address:"江南区 彦州路170キル 34（狎鴎亭）",
+   desc:"済州黒豚を炭火で焼く人気焼肉店。洞窟スタイルの演出で食事が体験になる。骨付き豚バラ・豚の首肉・韓牛が揃う。スタッフが焼いてくれるフルサービス。バンチャン（副菜）も豪華。",
+   wait:"⏱️ 夕方4時の開店直後が最も入りやすい。週末夜は1時間待ちも。",isHot:true,
+   area:"狎鴎亭",url:"https://s.tabelog.com/southkorea/A5301/A530105/53003613/",subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩5分",ig:"jejurooftop_office",gmap:"https://maps.google.com/?q=37.5264344,127.0364118",catchtable:{status:'ok',note:'CATCHTABLEで予約・ウェイティング可能（제주옥탑 블랙BBQ）。週末夜は1時間待ちも。夕方4時の開店直後なら比較的入りやすい。',url:'https://www.catchtable.net/shop/jejuoktop_bbq'}},
+
+  {id:31,name:"芳荑豚家（パンイドンガ）詳細",nameEn:"Panyi Donga Samgyeopsal Seoul",emoji:"🍖",cat:"food",
+   lat:37.525673,lng:127.041085,
+   hours:"要確認（インスタ参照）",address:"江南区 清潭洞・宣陵路付近",
+   desc:"IKKOさん絶賛の有名サムギョプサル店（詳細情報）。TWICE・坂口健太郎も来店。厚切り豚バラとポックンパが必食。狎鴎亭〜清潭洞エリアの芸能人御用達グルメスポット。",
+   wait:"⏱️ 週末・夜は混雑必至。事前予約強く推奨。",isHot:true,
+   area:"清潭洞",url:"https://www.asoview.com/note/7070/"}  ,{id:32,name:"소문난 聖水カムジャタン",nameEn:"Somunnan Seongsu Gamjatang",emoji:"🍖",cat:"food",
+   lat:37.5428241,lng:127.0543732,
+   hours:"24時間営業（年中無休）",address:"城東区 蓮武場キル 45（聖水洞）",
+   desc:"ペク・ジョンウォンの人気TV番組『3大天王』でも絶賛された聖水洞の超有名カムジャタン専門店。豚の背骨をじっくり煮込んだ濃厚スープが絶品。本館・別館の2店舗を構えるほどの人気。シメのラーメン・チャーハン追加が必食。24時間営業なので夜中でも食べられる。",
+   wait:"⏱️ ランチタイムは店外まで行列必至。20〜30分待ちが目安。深夜は比較的すいている。回転は速め。",isHot:true,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞エリアです",
+   url:"https://life-in-korea.net/seongsu-dong_somunnan-gamjatang/",
+   subway:"2号線 聖水駅 4番出口 徒歩10分 / 7号線 オリニ大公園駅 4番出口 徒歩12分",
+   ig:"somunnan_gamjatang",
+   gmap:"https://maps.google.com/?q=37.5428241,127.0543732",
+   catchtable:{status:'ng',note:'予約不可・ウォークインのみ。24時間営業なので深夜が穴場。列は回転が速い。',url:''}}  ,{id:33,name:"OFF BEAUTY（オフビューティ）",nameEn:"OFF BEAUTY Myeongdong Square",emoji:"💄",cat:"shop",
+   lat:37.5615511,lng:126.9841895,
+   hours:"10:00〜23:00（年中無休）",address:"中区 明洞8ナキル 14（明洞スクエア内）",
+   desc:"韓国発のコスメアウトレット。メーカーから在庫品・旧パッケージ品・シーズン終了品を直接仕入れ、最大80〜90%OFFで販売。AHC・Rom&nd・Dr.Gなどの正規品がコスパよく買える。シートマスク・パック・ハンドクリームのまとめ買いに最適。店舗ごとに品揃えが変わる宝探し感覚のお店。使用期限は必ず確認して。",
+   wait:"⏱️ 通常は待ちなし。混雑時間帯でもスムーズ。",isHot:false,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞エリアです",
+   url:"https://ameblo.jp/yukimax23/entry-12943024788.html",
+   subway:"4号線 明洞駅 6番出口 徒歩3分",
+   ig:"offbeauty.kr",
+   gmap:"https://maps.google.com/?q=37.5615511,126.9841895",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}}
+  ,{id:34,name:"lululemon 明洞ロッテ店",nameEn:"lululemon Lotte Main Myeongdong",emoji:"🧘",cat:"shop",
+   lat:37.564955,lng:126.9816948,
+   hours:"平日 10:30〜20:00 / 金土 10:30〜20:30 / 日 10:30〜20:00",address:"中区 南大門路 81（ロッテ百貨店明洞本店 3F）",
+   desc:"カナダ発プレミアムアスレジャーブランドの明洞旗艦店。Alignレギンス・Everywhere Belt Bag・キャップ・ステンレスボトルが人気。日本より価格が若干安いケースあり。Seoulロゴ入り韓国限定アイテムも展開。メンズ売場も充実。冬はアウター・防寒グッズも要チェック。",
+   wait:"⏱️ 待ちなし。",isHot:false,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞エリアです",
+   url:"https://ameblo.jp/ninajane/entry-12947964428.html",
+   subway:"4号線 明洞駅 7番出口 徒歩3分 / ロッテ百貨店直結",
+   ig:"lululemon",
+   gmap:"https://maps.google.com/?q=37.564955,126.9816948",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}}
+  ,{id:35,name:"CHICOR（シコール）明洞店",nameEn:"CHICOR MYEONGDONG",emoji:"✨",cat:"shop",
+   lat:37.5636755,lng:126.9850168,
+   hours:"11:00〜23:30（年中無休）",address:"中区 明洞キル 48",
+   desc:"新世界グループ運営の韓国最大級ビューティーセレクトショップ。約230ブランドを展開する「韓国版セフォラ」。1F：リップ・チーク・メイクアップ、2F：スキンケア・香水・ヘアケア。TIRTIR・Jung Saem Mool・d'Alba・Dasiqueなど、オリーブヤングにないブランドも多数。プロのMUAによるカラー診断・肌診断サービスも充実。5万ウォン以上購入で1万ウォン割引クーポンあり。",
+   wait:"⏱️ 通常は待ちなし。試してから買えるので選びやすい。",isHot:false,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞エリアです",
+   url:"https://ameblo.jp/blog-memorandum/entry-12958102107.html",
+   subway:"4号線 明洞駅 6番出口 徒歩5分",
+   ig:"chicor_official",
+   gmap:"https://maps.google.com/?q=37.5636755,126.9850168",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}}  ,{id:36,name:"新世界百貨店 江南店",nameEn:"Shinsegae Department Store Gangnam",emoji:"🏬",cat:"shop",
+   lat:37.5049943,lng:127.0042327,
+   hours:"平日 10:30〜20:00 / 金土日祝 10:30〜20:30（月1回月曜定休）",address:"瑞草区 新盤浦路 176（高速ターミナル駅直結）",
+   desc:"ソウル最大規模を誇る新世界グループの旗艦百貨店。3・7・9号線 高速ターミナル駅から直結でアクセス抜群。ハイブランドからコスメ・グルメまで幅広く揃う。地下フードコートは「美食のテーマパーク」と呼ばれるほど充実。外国人向けサービスデスクあり・税金還付対応。館内にHOUSE OF SHINSEGAEも入居。ベトン（塩パン）などの人気店も地下に集結。",
+   wait:"⏱️ ショップは通常待ちなし。フードコートは昼・夕方は混雑する。",isHot:false,
+   area:"高速ターミナル",note:"⚠️ 狎鴎亭ではなく高速ターミナルエリアです",
+   url:"https://www.seoulnavi.com/shop/1549/",
+   subway:"3・7・9号線 高速ターミナル駅 直結（徒歩1分）",
+   ig:"shinsegae_gangnam",
+   gmap:"https://maps.google.com/?q=37.5049943,127.0042327",
+   catchtable:{status:'ng',note:'百貨店のため予約不要。館内の一部レストラン（HOUSE OF SHINSEGAE内）はCATCHTABLEで個別予約可能。',url:''}}
+  ,{id:37,name:"HOUSE OF SHINSEGAE",nameEn:"House of Shinsegae",emoji:"🍽️",cat:"food",
+   lat:37.5049943,lng:127.0042327,
+   hours:"10:30〜22:00（不定休・新世界百貨店の休業日に準ずる）",address:"瑞草区 新盤浦路 176 新世界百貨店江南店 B1〜中2階",
+   desc:"2024年6月オープン。新世界百貨店江南店のB1〜中2階に広がるラグジュアリーフードホール。3層吹き抜けのアトリウムがホテルラウンジのような高級感。寿司・すき焼き・うなぎ（東京の老舗「菊川」海外初出店）・韓牛カルビなど世界の美食が集結。1Fにはワインとスピリッツのワインセラー。館内初出店・国内初出店ブランドが多数。フードコートの常識を覆す体験型グルメ空間。",
+   wait:"⏱️ 昼11:30頃から大混雑。タッチパネルで受付する店が多い。各店CATCHTABLEで個別予約可能なところもあり。開店直後（10:30〜11:00）が狙い目。",isHot:true,
+   area:"高速ターミナル",note:"⚠️ 狎鴎亭ではなく高速ターミナルエリア・新世界百貨店江南店B1内です",
+   url:"https://brutus.jp/houseofshinsegae/",
+   subway:"3・7・9号線 高速ターミナル駅 直結（徒歩1分）・新世界百貨店江南店に入り左手直進",
+   ig:"houseofshinsegae",
+   gmap:"https://maps.google.com/?q=37.5049943,127.0042327",
+   catchtable:{status:'ok',note:'館内の各レストランがCATCHTABLEで個別に予約・ウェイティング受付をしている。特に人気店（ユンヘウンデカルビ等）は事前予約を強くおすすめ。',url:'https://www.catchtable.net'}}  ,{id:38,name:"KREAM DOSAN FLAGSHIP STORE",nameEn:"KREAM Dosan Flagship Store",emoji:"👟",cat:"shop",
+   lat:37.5260101,lng:127.03557069999998,
+   hours:"平日 11:00〜20:00 / 金土日 11:00〜21:00",address:"江南区 彦州路168キル 24 2F（ロンドンベーグル島山店すぐ近く）",
+   desc:"韓国最大のスニーカー・ストリートファッションプラットフォーム「KREAM」の初フラッグシップ店。2F がメインのセレクトショップで、KPOPアイドル着用アイテムが多数揃う。aespaのカリナ・BLACKPINKのジスなど芸能人御用達ブランドが集結。スニーカー・服・アクセサリー・フレグランスなど幅広く展開。1Fはポップアップスペースで内容が随時変わる。ロンドンベーグル島山店のすぐ隣なので合わせて訪問がおすすめ。",
+   wait:"⏱️ 通常は待ちなし。ウォークインで入れる。",isHot:true,
+   area:"狎鴎亭",
+   url:"https://ameblo.jp/luneprincess/entry-12950982612.html",
+   subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩5分",
+   ig:"popular/kream-dosan-flagship-store",
+   gmap:"https://maps.google.com/?q=37.5260101,127.03557069999998",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}}  ,{id:39,name:"現代シティアウトレット 東大門店",nameEn:"Hyundai City Outlet Dongdaemun",emoji:"🛒",cat:"shop",
+   lat:37.5688743,lng:127.0078349,
+   hours:"平日 10:30〜21:00 / 金土日 10:30〜21:30（不定休）",address:"中区 奨忠壇路13キル 20（ドゥータ！とミリオレの間）",
+   desc:"旅行中に必ず行くという常連も多い東大門エリア最大規模のショッピングビル。韓国コンバース（CT70など）・ノースフェイス・アウトドアブランドが日本より安く買えることで有名。2025年2月に2Fが「SEOUL EDITION」として海外観光客向けにリニューアル。【フロア】B2F:フードコート／B1F:教保文庫・ダイソー・Tax Refundデスク／1F:K-ビューティー・雑貨／2F:SEOUL EDITION（観光客向け）／3F:レディースファッション・バッグ・靴／5F:カジュアル・コンバース／7F:ノースフェイス・スポーツ・アウトドア／9F:レストラン街",
+   wait:"⏱️ ショップは通常待ちなし。フードコートは混雑する時間帯あり。",isHot:false,
+   area:"東大門",note:"⚠️ 狎鴎亭ではなく東大門エリアです",
+   url:"https://ameblo.jp/la-lalalala/entry-12867087221.html",
+   subway:"2・4・5号線 東大門歴史文化公園駅 14番出口 徒歩6分 / 1・4号線 東大門駅 8番出口 徒歩8分",
+   ig:"hyundai_outlet",
+   gmap:"https://maps.google.com/?q=37.5688743,127.0078349",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。館内レストランは個別に予約が必要な場合あり。',url:''}}  ,{id:40,name:"MUSINSA STORE 明洞",nameEn:"Musinsa Store Myeongdong",emoji:"👗",cat:"shop",
+   lat:37.5638493,lng:126.9829822,
+   hours:"11:00〜23:00（年中無休）",address:"中区 明洞キル 13 B1〜3F（ヌーンスクエア向かい）",
+   desc:"2026年1月30日オープン。韓国最大ファッションプラットフォーム「MUSINSA」の明洞初フラッグシップ。地下1F〜3Fの4フロア・約992㎡に110以上のブランドが集結。入店ブランドの8割以上が韓国国内ブランド。1F圧倒的なシューズウォールは必見でスニーカーも充実。各商品のQRコードをスキャンするとリアルタイムで在庫確認・会員価格・レビュー閲覧が可能なO4Oシステムを導入。【フロア】B1F:バッグ・キャップ / 1F:シューズ・レディース・ユニセックス / 2F:レディース / 3F:レディース・ユニセックス。夜23時まで営業なので観光の締めにも立ち寄りやすい。",
+   wait:"⏱️ 入場制限がかかることあり。旧正月などの連休は特に混雑。平日の開店直後が最もゆっくり見られる。",isHot:true,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞エリアです",
+   url:"https://kou-tripdiary.com/musinsa-store-myeongdong/1753/",
+   subway:"4号線 明洞駅 6・7番出口 徒歩約7分 / 2号線 乙支路入口駅 5・6番出口 徒歩約5分",
+   ig:"reel/DVvaDcHk7-T/?igsh=N2tiamdwZzMycDhv",
+   gmap:"https://maps.google.com/?q=37.5638493,126.9829822",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。混雑時は入場制限あり。',url:''}}  ,{id:41,name:"29CM HOME 聖水店",nameEn:"29CM HOME Seongsu",emoji:"🏠",cat:"shop",
+   lat:37.5425599,lng:127.0557579,
+   hours:"11:00〜22:00（年中無休）",address:"城東区 聖水洞2街 315-10（聖水洞）",
+   desc:"2011年にネットショップからスタートした韓国のライフスタイル雑貨セレクトショップ「29CM（イグホー）」の聖水フラッグシップ。インテリア・キッチン雑貨・文具・キャンドル・ポスターなど、センスあるオリジナル＆セレクト雑貨が揃う。韓国らしいデザインのお土産・プレゼント探しにも最適。店内はフォトジェニックで聖水洞散策と合わせて立ち寄りやすい。",
+   wait:"⏱️ 通常は待ちなし。ウォークインで自由に見て回れる。",isHot:false,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞（ソンスドン）エリアです",
+   url:"https://ameblo.jp/waimanalobeach/entry-12947918596.html",
+   subway:"2号線 聖水駅 4番出口 徒歩約10分",
+   ig:"29cm.official",
+   gmap:"https://maps.google.com/?q=37.5425599,127.0557579",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}}  ,{id:42,name:"KITH SEOUL 聖水店",nameEn:"Kith Seoul Seongsu",emoji:"👟",cat:"shop",
+   lat:37.541768,lng:127.0570027,
+   hours:"11:00〜21:00（年中無休）",address:"城東区 蓮武場キル 70（聖水洞）",
+   desc:"2024年5月31日オープン。ニューヨーク発の人気セレクトショップ「KITH」の韓国初フラッグシップ。現代百貨店グループ傘下のHandsome社との共同運営。4階建てで、ダークブラウンの木材とスパイラル階段が印象的なインテリア。メンズ・レディース・キッズのアパレル・シューズ・アクセサリーを展開。New Balance Made in USA/UKやASICSなどのKITH別注スニーカーが充実。3FにはKITH TREATSのセレアルバー、4FにはNY名店Sadelle's（サデル）のレストランも併設。ソウル限定カプセルコレクションも随時展開。スタッフが英語対応可能。免税（Tax Free）書類をその場で発行してくれる。",
+   wait:"⏱️ 通常は待ちなし。限定発売日やポップアップ時は混雑することあり。",isHot:true,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞（ソンスドン）エリアです",
+   url:"https://mastered.jp/news/kith-seoul-20240531/",
+   subway:"2号線 聖水駅 4番出口 徒歩約12分 / タクシー推奨",
+   ig:"kith",
+   gmap:"https://maps.google.com/?q=37.541768,127.0570027",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}}  ,{id:43,name:"adidas Originals フラッグシップ 聖水",nameEn:"Adidas Originals Flagship Seongsu",emoji:"🏃",cat:"shop",
+   lat:37.5430401,lng:127.0530490,
+   hours:"11:00〜22:00（年中無休）",address:"城東区 蓮武場キル 32（聖水洞）",
+   desc:"2025年オープンのアディダス オリジナルス 聖水フラッグシップ。ロンドンのデザイン会社Checkland Kindleysides設計。赤レンガのブルータリスト外観が聖水の街並みに溶け込む3フロア構成。1F:アパレル・ランチゾーン（鏡張り空間）、2F:スニーカーをアート作品のように展示するギャラリースタイル＋巨大デジタルウォール、3F:「Made for You」カスタムTシャツ制作スタジオ＋屋上テラス（DJイベント・アート展示などを開催）。ソウル聖水限定コレクション「City Shop」も展開。KITH・29CM HOMEと同じ蓮武場キル沿いでまとめて回れる。",
+   wait:"⏱️ 通常は待ちなし。限定発売時や週末は入場制限がかかることあり。",isHot:true,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞（ソンスドン）エリアです",
+   url:"https://www.mk.co.kr/jp/business/11282805",
+   subway:"2号線 聖水駅 4番出口 徒歩約10分",
+   ig:"adidasoriginals",
+   gmap:"https://maps.google.com/?q=37.5430401,127.0530490",
+   placeId:"ChIJ4bpuWAClfDUR6l6qRfTzNhE",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。限定発売日は入場制限あり。',url:''}}
+  ,{id:45,name:"HAUS NOWHERE SEOUL",nameEn:"Haus Nowhere Seoul",emoji:"👓",cat:"shop",
+   lat:37.5438,lng:127.0559,
+   hours:"11:00〜21:00（NUDAKE TEAHOUSE 12:00〜21:00）",address:"城東区 トゥクソム路 433（聖水洞2街 261）",
+   desc:"2025年9月オープン。Gentle Monster（ジェントルモンスター）を擁するIICOMBINEDが手がける聖水洞の新ランドマーク。単なるショップではなく「全身で体験するアートスポット」。【フロア構成】1F:Gentle Monster（アイウェア）巨大SF彫刻が出迎える／2F:TAMBURINS（コスメ・フレグランス）香りの銀河をテーマにした幻想的な空間／3F:Nuflaat（テーブルウェア）アートとしての食器ブランド・ATiiSSU（帽子）／5F:NUDAKE TEAHOUSE（紅茶専門カフェ）Nuflaat食器でアートなティータイム。オープン以来行列が絶えない超人気スポット。",
+   wait:"⏱️ 週末は行列必至。NUDAKE TEAHOUSEは特に混雑。平日11時台の開店直後が最もスムーズ。",isHot:true,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞（ソンスドン）エリアです",
+   url:"https://ameblo.jp/takatoro/entry-12963546924.html",
+   subway:"2号線 聖水駅 3番出口 徒歩約13〜15分 / タクシー推奨",
+   ig:"hausnowhere",
+   gmap:"https://maps.google.com/?q=37.5438,127.0559",
+   catchtable:{status:'unknown',note:'NUDAKE TEAHOUSEはCATCHTABLE対応の可能性あり。訪問前に公式インスタで確認推奨。',url:''}}
+  ,{id:46,name:"nyunyu HOUSE 聖水店",nameEn:"nyunyu House Seongsu",emoji:"🎀",cat:"shop",
+   lat:37.5429,lng:127.0558,
+   hours:"確認中（インスタ参照）",address:"城東区 聖水洞二街 315-107",
+   desc:"2025年に急速展開中の人気ガーリーブランド「nyunyu（ニュニュ）」の聖水3店舗目となるHOUSE業態。ハート・リボン・フリルをふんだんに使った超ガーリーなファッションブランド。IVE・チャン・ウォニョンがモデルを務める。洋服のほかアクセサリー・雑貨も充実。聖水洞の蓮武場キル周辺に位置しKITH・29CM・アディダスとまとめて回れる。",
+   wait:"⏱️ 通常は待ちなし。週末は賑わう。",isHot:false,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞（ソンスドン）エリアです",
+   url:"https://ameblo.jp/loadtokorea/entry-12913356035.html",
+   subway:"2号線 聖水駅 4番出口 徒歩約10分",
+   ig:"nyunyu_official",
+   gmap:"https://maps.google.com/?q=37.5429,127.0558",
+   catchtable:{status:'ng',note:'ショップのため予約不要・ウォークインのみ。',url:''}}
+  ,{id:47,name:"adidas Brand Flagship Store 明洞",nameEn:"adidas Brand Flagship Store Seoul Myeongdong",emoji:"⚽",cat:"shop",
+   lat:37.5628,lng:126.9844,
+   hours:"10:30〜22:00（年中無休）",address:"中区 明洞8キル 27 Mプラザ 1〜2F",
+   desc:"韓国最大規模のアディダス旗艦店（約2,500㎡）。スポーツパフォーマンス・オリジナルス・Y-3など全ラインを一店舗で体験できる。1Fに「Seoul Lab」カスタムスタジオあり。Tシャツ・スウェット・キャップ・スニーカーに아디다스（アディダス）や오리지널스（オリジナルス）などハングルロゴ・ソウルの名所デザインのワッペン・プリントを付けてオリジナルアイテムが作れる！整理券不要で待ち時間も少なめ。ハングル入りのオリジナルウェアはここだけの最高のお土産になる。BLACKPINKジェニーのアンバサダー広告が外観の目印。",
+   wait:"⏱️ 混雑時間帯（昼〜夕）はカスタムコーナーで20〜30分待ちの場合あり。開店直後が最もスムーズ。",isHot:true,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞エリアです",
+   url:"https://www.ryman-traveler.com/entry/2024/02/20/184255",
+   subway:"4号線 明洞駅 8番出口 徒歩約5分",
+   ig:"adidas",
+   gmap:"https://maps.google.com/?q=37.5628,126.9844",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。Seoul Labのカスタムも整理券不要（混雑時は口頭案内あり）。',url:''}}
+  ,{id:44,name:"MUSINSA STANDARD 漢南",nameEn:"Musinsa Standard Hannam",emoji:"👕",cat:"shop",
+   lat:37.5375604,lng:127.000717,hours:"11:00〜21:00（年中無休）",address:"龍山区 漢南洞 739-11",
+   desc:"韓国最大ファッションプラットフォームMUSINSAのプライベートブランド旗艦店。質の高いベーシックアイテムをリーズナブルに展開。Tシャツ・デニム・アウターなど幅広いラインナップ。スタッフが英語対応可能。セール時はかなりお得に買える。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"reel/DVvaDcHk7-T/?igsh=N2tiamdwZzMycDhv",
+   gmap:"https://maps.google.com/?q=37.5375604,127.000717",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:48,name:"BEAKER 漢南",nameEn:"Beaker Hannam",emoji:"🧪",cat:"shop",
+   lat:37.536513,lng:126.99993099999999,hours:"11:00〜20:00（年中無休）",address:"龍山区 漢南洞 738-36",
+   desc:"日本・韓国・ヨーロッパのセレクトブランドを揃えるマルチショップ。ナイキ・コンバースなど定番からマイナーなデザイナーズブランドまで幅広い品揃え。複数フロアで見応えあり。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"beaker_official",
+   gmap:"https://maps.google.com/?q=37.536513,126.99993099999999",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:49,name:"LEMAIRE 漢南フラッグシップ",nameEn:"Lemaire Hannam Flagship",emoji:"🤍",cat:"shop",
+   lat:37.5342505,lng:127.00187869999999,hours:"11:00〜20:00（年中無休）",address:"龍山区 漢南洞 657-19",
+   desc:"パリ発のラグジュアリーブランドLEMAIREの漢南フラッグシップ。古民家を改築した一軒家ショップで中庭が美しい。シンプルで上質なアイテムが揃う。落ち着いた大人の空間。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩12分",ig:"lemaire_official",
+   gmap:"https://maps.google.com/?q=37.5342505,127.00187869999999",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:50,name:"EMIS 漢南フラッグシップ",nameEn:"Emis Hannam Flagship",emoji:"🧢",cat:"shop",
+   lat:37.533425,lng:127.00207950000001,hours:"平日 12:00〜19:30 / 金〜日 12:00〜20:00",address:"龍山区 大使館路 36",
+   desc:"BLACKPINKジェニーやaespaカリナ着用で世界的に人気のキャップ・アクセサリーブランド。漢南フラッグシップはキャップだけで100色以上展開。服・バッグ・アクセサリーも充実。韓国みやげとして超人気。",
+   wait:"⏱️ 混雑することあり。早めの訪問推奨。",isHot:true,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩12分",ig:"emis_official",
+   gmap:"https://maps.google.com/?q=37.533425,127.00207950000001",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:51,name:"gelato pique GRANDE MAISON HANNAM",nameEn:"Gelato Pique Grande Maison Hannam",emoji:"🍑",cat:"shop",
+   lat:37.5356958,lng:127.001217,hours:"平日 11:00〜20:00 / 土日 11:00〜20:30（毎月最終月曜定休）",address:"龍山区 梨泰院路54キル 63",
+   desc:"日本発人気ルームウェアブランド「ジェラート・ピケ」の韓国初フラッグシップ。カカオフレンズコラボなど韓国限定アイテムが充実。カフェ併設で水色の車がある外観がフォトスポットとして人気。日本より安く買えることもある。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分",ig:"gelato_pique_jp",
+   gmap:"https://maps.google.com/?q=37.5356958,127.001217",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:52,name:"Mardi Mercredi 漢南1号店",nameEn:"Mardi Mercredi 1 Hannam",emoji:"🌸",cat:"shop",
+   lat:37.5359599,lng:127.0009811,hours:"火〜日 11:00〜19:00（月曜定休）",address:"龍山区 梨泰院路54キル 58",
+   desc:"大きな花のデザインでお馴染みの韓国人気ファッションブランド。大人らしさとカジュアルを両立。漢南には1号店のほかカフェ併設の「Noir Mardi」・子ども服「LES PETITS」など5店舗が集結。Tシャツ・スウェットが代表作。アイドルも多数着用。",
+   wait:"⏱️ 週末は混雑。回転は速い。",isHot:true,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分",ig:"mardimercredi",
+   gmap:"https://maps.google.com/?q=37.5359599,127.0009811",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:53,name:"MangoManyPlease 漢南フラッグシップ",nameEn:"MangoManyPlease Hannam Flagship",emoji:"🥭",cat:"shop",
+   lat:37.533474,lng:127.00233870000001,hours:"12:00〜20:00（木曜定休）",address:"龍山区 大使館路 40",
+   desc:"スタジオのような入口と中庭が可愛い韓国ファッションブランド。ラブリーでフェミニンなスタイルが得意。試着室が広く明るくて快適。Sounds Hannam向かいに位置。価格もリーズナブルでコスパが良い。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩12分",ig:"mangomanyplease",
+   gmap:"https://maps.google.com/?q=37.533474,127.00233870000001",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:54,name:"NUMBERING フラッグシップ 漢南",nameEn:"Numbering Flagship Hannam",emoji:"💍",cat:"shop",
+   lat:37.5348177,lng:127.0006601,hours:"11:00〜20:00（年中無休）",address:"龍山区 大使館路5キル 11",
+   desc:"韓国人気ジュエリーブランド。シンプルながらも洗練されたデザインのリング・ネックレス・イヤリングが揃う。アイドル着用で話題になることも多い。価格は手が届きやすいレンジで、お土産・プレゼントとしても人気。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分",ig:"numbering_official",
+   gmap:"https://maps.google.com/?q=37.5348177,127.0006601",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:55,name:"MARGESHERWOOD 漢南",nameEn:"Margesherwood Hannam",emoji:"👜",cat:"shop",
+   lat:37.5381235,lng:127.00269739999999,hours:"12:00〜20:00（13:00〜14:00ブレイク）",address:"龍山区 漢南大路27キル 26-16 1F",
+   desc:"韓国産の質の高いバッグ・アクセサリーブランド。バゲットバッグがシグネチャーで全て韓国製。スヌーピーコラボなど遊び心あるコレクションも。価格は3〜5万円台でスタッフが丁寧に対応してくれる。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"margesherwood",
+   gmap:"https://maps.google.com/?q=37.5381235,127.00269739999999",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:56,name:"Rockfish Weatherwear 漢南",nameEn:"Rockfish Weatherwear Hannam",emoji:"👞",cat:"shop",
+   lat:37.5356932,lng:127.0005467,hours:"11:30〜20:00（年中無休）",address:"龍山区 漢南洞 683-76",
+   desc:"英国スタイルにインスパイアされた韓国発シューズブランド。マリージェーン・ローファー・ウェリントンブーツなどが人気。韓国アイドル着用で話題に。税金還付対応あり。3フロア構成。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分",ig:"rockfish_weatherwear",
+   gmap:"https://maps.google.com/?q=37.5356932,127.0005467",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:57,name:"BLUE ELEPHANT 漢南",nameEn:"Blue Elephant Hannam",emoji:"🐘",cat:"shop",
+   lat:37.536337599999996,lng:127.0012545,hours:"12:00〜20:00（13:00〜14:00ブレイク）",address:"龍山区 漢南洞 683-47 3F",
+   desc:"Gentle Monster傘下のリーズナブルなアイウェアブランド。サングラス・メガネが多数展開。GMより手頃な価格帯でKPOPアイドル着用でも話題。漢南洞エリアにショールームとフラッグシップの2店舗あり。",
+   wait:"⏱️ 混雑することあり。午前中が比較的空いている。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分",ig:"blue_elephant_official",
+   gmap:"https://maps.google.com/?q=37.536337599999996,127.0012545",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:58,name:"TAMBURINS 漢南フラッグシップ",nameEn:"Tamburins Flagship Hannam",emoji:"🌺",cat:"shop",
+   lat:37.5359954,lng:126.9999555,hours:"11:00〜21:00（年中無休）",address:"龍山区 梨泰院路 238",
+   desc:"Gentle Monster系列のラグジュアリーコスメ・フレグランスブランドのフラッグシップ。巨大なかぼちゃのオブジェと犬の彫刻が出迎える幻想的な空間。ハンドクリーム・ボディローション・香水が人気。スタッフがフレグランスを丁寧に説明してくれる。",
+   wait:"⏱️ 通常は待ちなし。フォトスポットで立ち止まる人が多い。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分",ig:"tamburins_official",
+   gmap:"https://maps.google.com/?q=37.5359954,126.9999555",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:59,name:"hince 漢南",nameEn:"hince Hannam",emoji:"💋",cat:"shop",
+   lat:37.5371564,lng:126.99971719999998,hours:"11:00〜20:00（年中無休）",address:"龍山区 梨泰院路49キル 14-2 1F",
+   desc:"ムードナラティブをテーマにしたK-ビューティーブランド。リップティント・スキンケアが人気。ニュートラルカラーと軽い質感が特徴。日英対応スタッフ常駐。漢南店はコンパクトだが商品を実際に試せる。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"hince_official",
+   gmap:"https://maps.google.com/?q=37.5371564,126.99971719999998",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:60,name:"AMUSE 漢南ショールーム",nameEn:"AMUSE Showroom Hannam",emoji:"🌈",cat:"shop",
+   lat:37.5363262,lng:126.99924970000001,hours:"11:00〜20:00（年中無休）",address:"龍山区 梨泰院路55ガキル 49 3F",
+   desc:"ヴィーガン・クルエルティフリーのK-ビューティーブランド。Hello Kittyコラボなどかわいいパッケージで人気。リップ・チークが特に評判で色の種類が豊富。スタッフがスウォッチしてくれるので選びやすい。試供品も充実。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"amuse_official_kr",
+   gmap:"https://maps.google.com/?q=37.5363262,126.99924970000001",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:61,name:"NONFICTION 漢南",nameEn:"Nonfiction Hannam",emoji:"🕯️",cat:"shop",
+   lat:37.536252999999995,lng:127.00030069999998,hours:"11:00〜20:30（年中無休）",address:"龍山区 梨泰院路 242",
+   desc:"香りの物語を体験できるフレグランス・スキンケアブランド。Gentle Night・Santal系フレグランスが特に人気。キャンドル・ディフューザーも充実。落ち着いた空間でスタッフが丁寧に香りを案内してくれる。梨泰院エリアの中でも上位の人気ショップ。",
+   wait:"⏱️ 通常は待ちなし。混雑することもあり。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分",ig:"nonfiction_official",
+   gmap:"https://maps.google.com/?q=37.536252999999995,127.00030069999998",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:62,name:"ASTIER de VILLATTE ソウルフラッグシップ",nameEn:"Astier de Villatte Seoul Flagship",emoji:"🏺",cat:"shop",
+   lat:37.5369976,lng:126.99969220000001,hours:"11:00〜22:00（年中無休）",address:"龍山区 梨泰院路49キル 13",
+   desc:"パリ発の手作り陶器・フレグランスブランドの海外初フラッグシップ。5階建てでギャラリーのような展示。5F屋上テラスではAstierの食器でアフタヌーンティーが楽しめる。手作り感あふれる白い陶器は一点一点表情が違う。世界中のファンが訪れる聖地的存在。",
+   wait:"⏱️ 通常は待ちなし。5Fカフェは席数少なめ。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"astierdevillatte",
+   gmap:"https://maps.google.com/?q=37.5369976,126.99969220000001",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:63,name:"OPEN YY フラッグシップ 漢南",nameEn:"OPEN YY Flagship Hannam",emoji:"🎀",cat:"shop",
+   lat:37.534492,lng:126.99934389999999,hours:"月 11:00〜18:00 / 火〜日 11:00〜20:00（火曜定休）",address:"龍山区 梨泰院路36キル 16 1F",
+   desc:"韓国のデザイナーズブランド。フェミニンで上質なレディースアイテムが揃う。カフェ・フレンチティーも併設されていてショッピング中に一息つける。本部チームのスタッフが常駐することも。音楽が良くゆったりした空間。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩12分",ig:"open_yy",
+   gmap:"https://maps.google.com/?q=37.534492,126.99934389999999",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:64,name:"AWESOME NEEDS HOUSE 漢南",nameEn:"Awesome Needs House Hannam",emoji:"🎩",cat:"shop",
+   lat:37.5385044,lng:127.002769,hours:"13:00〜20:00（月・火定休）",address:"龍山区 漢南大路27キル 26-26",
+   desc:"帽子・キャップ専門のセレクトショップ。キャップ・バケットハット・ハットなど多様な種類を揃える。トレンドのスタイルからクラシックまで幅広い。手頃な価格帯でお土産にもおすすめ。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"awesomeneeds",
+   gmap:"https://maps.google.com/?q=37.5385044,127.002769",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:65,name:"% Arabica Magazine B 漢南",nameEn:"% Arabica Magazine B Hannam",emoji:"☕",cat:"cafe",
+   lat:37.5337671,lng:127.0020666,hours:"9:00〜19:00（年中無休）",address:"龍山区 大使館路 35 2F（Sounds Hannam D棟）",
+   desc:"京都発スペシャルティコーヒーブランド「% Arabica」の漢南店。Sounds Hannam内に位置し、コーヒーに加えて雑誌・タオルなどのグッズも販売するMagazine B特別コンセプト。テラス席あり。京都ラテが人気。カードのみの支払い。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩12分",ig:"arabica.kr",
+   gmap:"https://maps.google.com/?q=37.5337671,127.0020666",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:66,name:"The TRUFFLE BAKERY 漢南",nameEn:"The Truffle Bakery Hannam",emoji:"🍄",cat:"bakery",
+   lat:37.5351072,lng:127.0004556,hours:"9:00〜18:00（年中無休）",address:"龍山区 大使館路5キル 19",
+   desc:"トリュフを使った高級ベーカリー。チーズと特製バターで作るティッシュブレッド（大きなフレーキーバタークロワッサン）が名物。塩パン・サルティッドキャラメルロンドンバンも人気。昼過ぎには人気商品が売り切れることも。",
+   wait:"⏱️ 開店直後が種類豊富。夕方は売り切れが多い。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分",ig:"thetrufflebakery",
+   gmap:"https://maps.google.com/?q=37.5351072,127.0004556",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:67,name:"McCOY's 漢南",nameEn:"McCoy's Hannam",emoji:"☕",cat:"cafe",
+   lat:37.5381715,lng:127.0025419,hours:"9:00〜21:30（年中無休）",address:"龍山区 漢南大路27キル 34",
+   desc:"漢南洞の落ち着いたコーヒーショップ。エスプレッソベースのコーヒーが濃厚で評判。オートミルクラテも充実。インダストリアルなインテリアでクラシック音楽が流れる居心地のよい空間。地元客が多い。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"mccoys_hannam",
+   gmap:"https://maps.google.com/?q=37.5381715,127.0025419",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:68,name:"mtl 漢南",nameEn:"mtl cafe Hannam",emoji:"🎵",cat:"cafe",
+   lat:37.537066599999996,lng:126.9991267,hours:"8:30〜21:30（年中無休）",address:"龍山区 梨泰院路49キル 24",
+   desc:"ランニングコミュニティと繋がりのあるインダストリアル系カフェ。DJセット常設で落ち着いたムードの音楽を演出。コーヒー・スムージーボウルが人気。雑貨・ランニングギアのセレクトコーナーも。Leeum美術館の近く。オートミルクあり。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"mtl_cafe",
+   gmap:"https://maps.google.com/?q=37.537066599999996,126.9991267",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:69,name:"MILESTONE COFFEE 漢南",nameEn:"Milestone Coffee Hannam",emoji:"☕",cat:"cafe",
+   lat:37.5378721,lng:127.00266519999998,hours:"10:00〜20:30（年中無休）",address:"龍山区 漢南大路27キル 26 1F",
+   desc:"漢南洞で評判のスペシャルティコーヒー。ウィーン風コーヒー（ザッハー風）とティラミスのペアリングが名物。バナナブレッドなどペイストリーも充実。落ち着いた空間でゆっくり過ごせる。漢南洞散策の途中に立ち寄りやすい立地。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",ig:"milestonecoffee_official",
+   gmap:"https://maps.google.com/?q=37.5378721,127.00266519999998",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:70,name:"Archivist 漢南",nameEn:"Archivist Hannam",emoji:"📚",cat:"cafe",
+   lat:37.5440004,lng:127.00298099999999,hours:"平日 9:00〜19:00 / 土日 10:00〜19:00",address:"龍山区 漢南大路42キル 41 1F",
+   desc:"漢南洞のメインエリアから少し外れた静かなカフェ。フラットホワイト・アイスパニエが絶品と評判。アップルパイ・フィグフィナンシエなどペイストリーも美味しい。Wi-Fi完備で作業・読書に最適。英語スタッフ常駐。オートミルクあり。",
+   wait:"⏱️ 通常は待ちなし。静かで落ち着いている。",isHot:false,area:"漢南洞",
+   url:"https://www.konest.com/contents/hot_report_detail.html?id=4504",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩15分",ig:"archivist_seoul",
+   gmap:"https://maps.google.com/?q=37.5440004,127.00298099999999",catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}  ,{id:71,name:"GOURMET494（ゴメイサグサ）",nameEn:"Gourmet 494 Galleria",emoji:"🍱",cat:"food",
+   lat:37.5284709,lng:127.0400789,
+   hours:"平日 10:30〜20:00 / 金土日 10:30〜20:30（ギャラリア百貨店の営業日に準ずる）",address:"江南区 狎鴎亭路 343 ギャラリア百貨店名品館WEST B1F",
+   desc:"ギャラリア百貨店名品館WEST地下1階に広がるソウル最高峰の高級フードホール。名前の494はギャラリアの住所番地から。ブラック＆ゴールドを基調にした照明が柔らかく優雅な空間。ソウルの選りすぐりの人気店が集結したフードコートのほか、オリジナルセレクションの食品・スイーツ・惣菜が揃う。気の利いたお土産探しにも最適。HOUSE OF SHINSEGAEと並ぶ「ソウル最高の高級フードホール」の一つ。隣接するギャラリア百貨店でのショッピングと合わせて立ち寄りやすい。",
+   wait:"⏱️ 昼・夕方は混雑。人気店のフードコートは30分待ちになることも。開店直後（10:30〜11:30）が最もスムーズ。",isHot:true,
+   area:"狎鴎亭",
+   url:"https://www.seoulnavi.com/special/5052782",
+   subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩8分 / 7号線 清潭駅 1番出口 徒歩10分",
+   ig:"galleria_official",
+   gmap:"https://maps.google.com/?q=37.5284709,127.0400789",
+   catchtable:{status:'unknown',note:'フードホール内の各店舗がCATCHTABLE対応の可能性あり。人気店は訪問前にアプリで確認推奨。',url:'https://www.catchtable.net'}}  ,{id:72,name:"NOBLECOCO（ノーブルココ）",nameEn:"Noble Coco Apgujeong",emoji:"💎",cat:"shop",
+   lat:37.5259447,lng:127.0367081,
+   hours:"10:00〜21:00（年中無休）",address:"江南区 彦州路168キル 37 1F（狎鴎亭ロデオ通り）",
+   desc:"狎鴎亭ロデオ通りにあるラグジュアリーセレクトショップ。Chanel・Dior・Hermes・Louis Vuitton・Celine・Bottega Venetaなど世界のハイブランドのバッグ・財布・アクセサリーを日本よりもお得な価格で取り扱う。正規品・中古品・アウトレット品が混在しているため、購入前に商品の状態・真贋証明の確認が必須。スタッフへの確認を忘れずに。韓国のセレクトショップ特有の掘り出し物が見つかることも。免税（Tax Refund）対応。",
+   wait:"⏱️ 通常は待ちなし。ゆっくり選べる雰囲気。",isHot:false,
+   area:"狎鴎亭",
+   url:"https://ameblo.jp/kworld-log/entry-12902360027.html",
+   subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩3分",
+   ig:"noblecoco_official",
+   gmap:"https://maps.google.com/?q=37.5259447,127.0367081",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}  ,{id:73,name:"ZACAFFE（ザカフェ）明洞",nameEn:"Zacaffe Seoul Myeongdong",emoji:"☕",cat:"cafe",
+   lat:37.563412899999996,lng:126.9828907,
+   hours:"10:30〜22:00（年中無休）",address:"中区 明洞キル 14 ヌーンスクエア 3F（1・2FはZARAファッション）",
+   desc:"2025年5月9日オープン。スペイン・中国南京に次ぐ世界3店舗目のZARA公式カフェ。ヌーンスクエアの1・2FがZARAファッション、3Fがカフェという構成。ソウル店限定のシグネチャードリンク「スジョンガ（水正果）ラテ」は韓国の伝統的なシナモン飲料とコーヒーを融合した唯一無二の味。ミニマルでクリーンな内装は宮殿をイメージしており、韓国らしいデザインとZARAの世界観が融合。マカロンなどのスイーツも韓国テイストにアレンジ。国ごとにコンセプトが異なるため、ここでしか体験できない空間。",
+   wait:"⏱️ オープン直後から話題で混雑。席待ちは15分程度が目安。開店直後の10:30〜11:00が狙い目。",isHot:true,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞エリアです",
+   url:"https://www.arukikata.co.jp/tokuhain/307046/",
+   subway:"4号線 明洞駅 6番出口 徒歩5分 / ヌーンスクエア3F直結",
+   ig:"reel/DJfxemthEzd/?igsh=d2Nvc2lwMG11bzBx",
+   gmap:"https://maps.google.com/?q=37.563412899999996,126.9828907",
+   catchtable:{status:'ng',note:'予約不可・ウォークインのみ。席待ちは店頭で順番待ちリストに記入するスタイル。',url:''}}  ,{id:74,name:"ABEBE BAKERY（アベベベーカリー）",nameEn:"Abebe Bakery Seoul",emoji:"🍩",cat:"bakery",
+   lat:37.56954410000001,lng:126.9999452,
+   hours:"10:00〜19:00（年中無休）",address:"鐘路区 清渓川路 201（広蔵市場近く）",
+   desc:"済州島発・連日行列の32種クリームパン専門店のソウル店。外はふわふわ・中はたっぷりのクリームが溢れ出すクリームパン（ドーナツ形）が名物。韓国きな粉（インジョルミ）フレーバーにはもちもちのお餅が入っていてこれが特に人気。ピスタチオ・ダークチョコ・塩キャラメル・ピーナッツなど多彩なフレーバーが揃い選ぶのも楽しい。8個以上購入で無料ボックス付き。テイクアウトが基本で清渓川沿いを歩きながら食べるのがおすすめ。広蔵市場散策と合わせて立ち寄りやすい。",
+   wait:"⏱️ 週末昼間は20〜30分待ちが目安。平日午前中・16時以降は比較的空いている。人気フレーバーは夕方に売り切れることも。",isHot:true,
+   area:"広蔵市場エリア",note:"⚠️ 狎鴎亭ではなく広蔵市場（清渓川）エリアです",
+   url:"https://ameblo.jp/momonoricopin/entry-12847630005.html",
+   subway:"1・3・5号線 鐘路3街駅 2番出口 徒歩5分 / 2号線 乙支路4街駅 4番出口 徒歩8分",
+   ig:"abebebakery",
+   gmap:"https://maps.google.com/?q=37.56954410000001,126.9999452",
+   catchtable:{status:'ng',note:'テイクアウト専門のため予約不要・ウォークインのみ。',url:''}}  ,{id:75,name:"ベテラン カルグクス（ロッテ本店）",nameEn:"Veteran Kalguksu Lotte Myeongdong",emoji:"🍜",cat:"food",
+   lat:37.564799199999996,lng:126.98190029999999,
+   hours:"ロッテ百貨店本店の営業時間に準ずる（平日10:30〜20:00 / 金土日〜20:30）",address:"中区 乙支路1街 132-2 ロッテ百貨店本店 地下食堂街",
+   desc:"1977年全州（チョンジュ）創業の全国区有名カルグクス専門店のロッテ明洞本店。カルグクスは韓国の手打ちうどんで、とろみのある卵とじスープにエゴマの実の粉・海苔・粉唐辛子が入ったあっさりほっこりの一杯。麺はもちもちで食べやすく一人でもさらっと食べられる。餃子（マンドゥ）とのセットが特に人気。約9,000ウォンとコスパも抜群。デパ地下なので清潔感があり、ショッピングの合間に気軽に立ち寄れる。寒い日や疲れた時の胃に優しいひと皿。",
+   wait:"⏱️ 昼12〜14時は混雑。14時以降は比較的スムーズ。回転は速め。",isHot:false,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞・ロッテ百貨店本店 地下です",
+   url:"https://jp.trip.com/moments/detail/seoul-234-120072921/",
+   subway:"2号線 乙支路入口駅 8番出口 直結 / 4号線 明洞駅 7番出口 徒歩3分",
+   ig:"",
+   gmap:"https://maps.google.com/?q=37.564799199999996,126.98190029999999",
+   catchtable:{status:'ng',note:'フードコート内の店舗のため予約不要・ウォークインのみ。',url:''}}  ,{id:76,name:"リキンパ 狎鴎亭",nameEn:"Li Gimbap Apgujeong",emoji:"🍙",cat:"food",
+   lat:37.526654,lng:127.02914410000001,
+   hours:"平日 8:00〜20:00 / 土 9:00〜20:00（日曜定休）",address:"江南区 狎鴎亭路30キル 12",
+   desc:"プレミアムキンパの元祖・先駆け的存在として韓国女子の定番ランチに君臨する人気店。一般的なキンパより具材が豪華で大きめ。牛肉＆きのこ・プルコギ・参鶏湯キンパなど独自フレーバーが充実。2Fにイートインスペースあり。英語メニューあり。注文後に作りたてを提供してくれる。トッポギ・ラーメンも一緒に楽しめる。朝8時から営業しているので朝ごはんにも最適。",
+   wait:"⏱️ テイクアウト中心なので回転は速い。混雑時でも10〜15分程度。",isHot:false,
+   area:"狎鴎亭",
+   url:"https://ameblo.jp/miyokomyondon/entry-12571675348.html",
+   subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩8分",
+   ig:"leegimbap_official",
+   gmap:"https://maps.google.com/?q=37.526654,127.02914410000001",
+   catchtable:{status:'ng',note:'テイクアウト専門のため予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:77,name:"ロボットキンパ 狎鴎亭ロデオ店",nameEn:"Robot Gimbap Apgujeong Rodeo",emoji:"🤖",cat:"food",
+   lat:37.5264,lng:127.0394,
+   hours:"8:00〜21:00（年中無休）",address:"江南区 狎鴎亭ロデオ通り周辺",
+   desc:"「食べるとロボットみたいに強くなれる」がコンセプトの健康志向プレミアムキンパ専門店。白米ではなく玄米（현미）を使用しているのが最大の特徴で、低カロリー・無添加・ウェルビーイングにこだわる。具材は注文を受けてから巻く作りたてスタイル。菜食・ヴィーガン対応メニューも充実。チョルミョン（平打ちビビン麺）も名物。英語スタッフ常駐。",
+   wait:"⏱️ 注文後に作るため5〜10分待ち。回転は速め。",isHot:false,
+   area:"狎鴎亭",
+   url:"https://www.seoulnavi.com/food/4797/",
+   subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩5分",
+   ig:"robotgimbap_official",
+   gmap:"https://maps.google.com/?q=37.5264,127.0394",
+   catchtable:{status:'ng',note:'テイクアウト専門のため予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:78,name:"スアダン（수아당）狎鴎亭",nameEn:"Suadang Apgujeong Keto Gimbap",emoji:"🥚",cat:"food",
+   lat:37.5247727,lng:127.03923420000001,
+   hours:"8:30〜20:00（年中無休）",address:"江南区 宣陵路 815（ギャラリア百貨店近く）",
+   desc:"韓国3大キンパの1つに数えられる高品質キンパ専門店。最大の特徴は「キトキンパ（키토김밥）」という米を卵に変えた低糖質・高タンパクキンパ。ふわふわ薄焼き卵で具を巻いたビジュアルが美しく、ダイエット志向の人にも大人気。具材のクオリティが高くひと口でうまみが広がる。普通の米キンパも絶品。8個以上でボックス付き。Naverマップで事前注文すると割引あり。ギャラリア百貨店でのショッピングの前後に立ち寄るのがおすすめ。",
+   wait:"⏱️ 常時混雑。Naverマップ事前注文で割引＆待ち時間短縮がおすすめ。",isHot:true,
+   area:"狎鴎亭",
+   url:"https://ameblo.jp/hangeulpark-academy/entry-12836930388.html",
+   subway:"盆唐線 狎鴎亭ロデオ駅 5番出口 徒歩10分 / 7号線 清潭駅 1番出口 徒歩12分",
+   ig:"suadang_official",
+   gmap:"https://maps.google.com/?q=37.5247727,127.03923420000001",
+   catchtable:{status:'ng',note:'Naverマップで事前注文が可能（割引あり）。CATCHTABLE非対応。',url:''}}  ,{id:79,name:"Juuneedu 明洞店",nameEn:"Juuneedu Myeongdong",emoji:"🌙",cat:"shop",
+   lat:37.5631948,lng:126.98409000000001,
+   hours:"10:30〜21:30（水・木曜定休）",address:"中区 明洞6キル 2（明洞）",
+   desc:"2025年7月25日オープンのJuuneedu3店舗目。2階建てでレディース・メンズ・キッズ・カップル用が揃う。スタッフ全員がパジャマを着て接客するのがかわいい！やわらかな素材とフェミニンなデザインで「5セット買った」というレビューも。スリッパ・枕カバー・ヘアバンドなど小物も充実。日本より安くてコスパ◎。明洞観光のついでに立ち寄りやすい立地。試着おすすめ（サイズ感が日本と少し違う場合あり）。",
+   wait:"⏱️ 通常は待ちなし。週末は混雑することも。",isHot:true,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞エリアです",
+   url:"https://ameblo.jp/yukimax23/entry-12948227167.html",
+   subway:"4号線 明洞駅 6・7番出口 徒歩4分 / 2号線 乙支路入口駅 5・6番出口 徒歩6分",
+   ig:"juuneedu",
+   gmap:"https://maps.google.com/?q=37.5631948,126.98409000000001",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:80,name:"Juuneedu ソウルの森店",nameEn:"Juuneedu Seoulsup Showroom",emoji:"🌙",cat:"shop",
+   lat:37.547109299999995,lng:127.0395826,
+   hours:"12:00〜19:30（年中無休）",address:"城東区 ソウル森2ギル 8-11（ソウルの森）",
+   desc:"3フロア構成の旗艦店でラインナップが最も充実。白を基調とした清潔感あふれるインテリアが素敵。パジャマ・ルームウェアをはじめスリッパ・ヘアバンド・枕カバーなどライフスタイル雑貨も充実。スタッフが丁寧に生地・サイズ感を説明してくれる。ソウルの森散歩とセットで訪問するのがおすすめ。KITHやアディダスからもほど近いのでまとめて回れる。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,
+   area:"ソウルの森",note:"⚠️ 狎鴎亭ではなくソウルの森エリアです",
+   url:"https://ameblo.jp/yukimax23/entry-12912300592.html",
+   subway:"2号線 トゥクソム駅 徒歩10〜15分 / ソウルの森駅（盆唐線）徒歩8分",
+   ig:"juuneedu_seoulsup",
+   gmap:"https://maps.google.com/?q=37.547109299999995,127.0395826",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:81,name:"Juuneedu 延南洞店",nameEn:"Juuneedu Yeonnam Pajamas Boutique",emoji:"🌙",cat:"shop",
+   lat:37.5617296,lng:126.926669,
+   hours:"12:00〜20:00（年中無休）",address:"麻浦区 延南洞 383-91（ヨンナムドン）",
+   desc:"弘大・延南洞エリアにある1号店。ソウルの森店より小規模だがカフェ通りや雑貨店が集まるトレンドエリアで散策がてら立ち寄れる。カップル・ファミリー・友達用のプレゼントを選ぶのにも最適。スタッフが英語対応可能。ギンガムチェック・小花柄・無地など幅広いデザイン。リピーターが多い人気店。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,
+   area:"延南洞",note:"⚠️ 狎鴎亭ではなく延南洞（弘大エリア）です",
+   url:"https://note.com/moco__log/n/n8888912b58a1",
+   subway:"2号線 弘大入口駅 3番出口 徒歩15分 / 空港鉄道 弘大入口駅 徒歩12分",
+   ig:"juuneedu",
+   gmap:"https://maps.google.com/?q=37.5617296,126.926669",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}  ,{id:82,name:"Passion 5（パッション5）",nameEn:"Passion 5 Hannam",emoji:"🎂",cat:"bakery",
+   lat:37.5386494,lng:127.0020823,
+   hours:"7:30〜22:00（年中無休）",address:"龍山区 梨泰院路 272（漢南洞）",
+   desc:"漢南洞のシンボル的存在の超豪華パティスリー＆ベーカリー。パリ仕込みのシェフパティシエが手がけるケーキ・タルト・クロワッサン・パンが美術館のようにディスプレイされた圧巻の空間。ティラミス・苺ロールケーキが絶品と評判。シュークリーム・エクレアなどフランス菓子が特に充実。店内カフェでジェラートとコーヒーを楽しめる。朝7:30から営業しているので朝食にも使える。漢南洞散策（TAMBURINS・Mardi Mercredi・ASTIER de VILLATTE等）の締めくくりに最適。",
+   wait:"⏱️ 週末は混雑するが広い店内なので比較的入りやすい。人気ケーキは夕方に売り切れることも。",isHot:true,
+   area:"漢南洞",note:"⚠️ 狎鴎亭ではなく漢南洞（梨泰院エリア）です",
+   url:"https://ameblo.jp/tanusaru8/entry-12955835482.html",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分 / 6号線 梨泰院駅 4番出口 徒歩8分",
+   ig:"passion5_official",
+   gmap:"https://maps.google.com/?q=37.5386494,127.0020823",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}  ,{id:83,name:"HIT COFFEE ROASTERS 漢南",nameEn:"Hit Coffee Roasters Hannam",emoji:"☕",cat:"cafe",
+   lat:37.537511699999996,lng:127.00138580000001,
+   hours:"要確認（インスタ参照）",address:"龍山区 漢南洞 683-137（漢南洞）",
+   desc:"漢南洞にあるインダストリアル感あふれる自家焙煎コーヒー専門店。コンクリート打ちっぱなしの内装と屋外テラス席が魅力。フラットホワイトが特に評判で、ソウルでは珍しいと絶賛の口コミあり。自家焙煎の豆はテイクアウト購入も可能。漢南洞散策の途中にひと休みするのに最適な場所。",
+   wait:"⏱️ 通常は待ちなし。テラス席は早い者勝ち。",isHot:false,
+   area:"漢南洞",
+   url:"https://ameblo.jp/miwakorea/entry-12903697038.html",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩8分",
+   ig:"hitcoffeeroasters",
+   gmap:"https://maps.google.com/?q=37.537511699999996,127.00138580000001",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:84,name:"MOMO カフェバー 漢南",nameEn:"Momo Cafe Bar Hannam",emoji:"🍸",cat:"cafe",
+   lat:37.5363,lng:126.9985,
+   hours:"要確認（インスタ参照）",address:"龍山区 漢南洞（漢江鎮駅〜梨泰院駅間）",
+   desc:"漢南洞の路地裏にひっそり佇む隠れ家系カフェバー。通り過ぎてしまいそうな控えめな外観だが、一歩入ると落ち着いた照明とセンスのいいインテリア・音楽が迎えてくれる。カフェラテ・スムージーからカクテルまで幅広く対応。スタッフも客もおしゃれで漢南洞の洗練された雰囲気を体現したようなお店。疲れた足を休める休憩場所として最高。",
+   wait:"⏱️ 通常は待ちなし。席数少なめなので混雑時は待つことも。",isHot:false,
+   area:"漢南洞",
+   url:"http://blog.livedoor.jp/kumsappa/archives/2053426.html",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩10分 / 梨泰院駅 4番出口 徒歩10分",
+   ig:"momo_hannam",
+   gmap:"https://maps.google.com/?q=37.5363,126.9985",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:85,name:"24時ピョダギカムジャタン",nameEn:"24-Hour Bone Gamjatang Hannam",emoji:"🦴",cat:"food",
+   lat:37.5334141,lng:127.0061692,
+   hours:"24時間営業（年中無休）",address:"龍山区 大使館路 73（漢南洞）",
+   desc:"漢南洞の裏路地にある24時間営業の超有名カムジャタン専門店。韓国メディアで何度も紹介され芸能人も通う名店。豚の骨を長時間煮込んだ濃厚スープが絶品で、骨からほろりと落ちる柔らかな肉が最高。絶対食べたいのが「ピョーチム（뼈찜）」という汁なしカムジャタン。スープを飛ばして濃縮された旨味がご飯に絡む究極の一品。シメのポックンパブ（ボーンスープ炒飯）も必食。漢南洞散策の夜ご飯・深夜メシとして最強。",
+   wait:"⏱️ 大人気につき行列必至。夜5〜8時のピーク時は124組待ちになることも！24時間営業なので深夜・早朝が最も穴場。CATCHTABLEでウェイティング登録を強くおすすめ。",isHot:true,
+   area:"漢南洞",
+   url:"https://ameblo.jp/luneprincess/entry-12898593156.html",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩12分 / 漢南駅（Korail）徒歩8分",
+   ig:"pyodagi_gamjatang",
+   gmap:"https://maps.google.com/?q=37.5334141,127.0061692",
+   catchtable:{status:'ok',note:'CATCHTABLEでウェイティング登録が可能。ピーク時（夕方5〜8時）は必ずアプリで順番取りを！深夜・早朝は比較的空いている。',url:'https://www.catchtable.net'}}  ,{id:86,name:"MEATBALL LOUNGE 漢南本店",nameEn:"Meatball Lounge Hannam",emoji:"🍝",cat:"food",
+   lat:37.5367326,lng:127.0015932,
+   hours:"11:30〜22:00（LO 21:00）/ ブレイク 15:30〜17:00",address:"龍山区 梨泰院路54キル 36（漢南洞 683-13）",
+   desc:"漢江鎮エリアにある人気イタリアン。辛ウマの絶品ミートソーススパゲティが名物で、ミートボールのジューシーさと韓国らしい辛みが絶妙にマッチ。フォーチーズパスタ・シーフードリゾットも絶品との口コミ多数。30席ほどのこぢんまりした落ち着いた空間。NAVERマップから予約可能（英語・韓国語）。ピクルスが意外と美味しいと評判。漢南洞散策の夜ごはんにぴったり。",
+   wait:"⏱️ NAVERマップから予約可能。週末夜は混雑するので予約推奨。ブレイクタイム（15:30〜17:00）に注意。",isHot:false,
+   area:"漢南洞",
+   url:"https://ameblo.jp/loadtokorea/entry-12941391320.html",
+   subway:"6号線 漢江鎮駅 3番出口 徒歩7分",
+   ig:"meatball_lounge",
+   gmap:"https://maps.google.com/?q=37.5367326,127.0015932",
+   catchtable:{status:'ng',note:'NAVERマップから予約可能（英語・韓国語対応）。CATCHTABLEには非対応。',url:''}}  ,{id:87,name:"lebonmasel（ルボンマゼル）",nameEn:"Le Bon Masel Gangneung",emoji:"🏺",cat:"shop",
+   lat:37.7569321,lng:128.8933624,
+   hours:"11:30〜18:30（年中無休）",address:"江原特別自治道 江陵市 臨冥路180番キル 16",
+   desc:"江陵（カンヌン）の人気プロップ＆雑貨ショップ。1・2Fがおしゃれな食器・小物・プロップ販売、3・4Fがカフェスペースの4フロア構成。クリスマスツリーや季節のディスプレイが美しく「見ているだけで楽しい」と評判。パウンドケーキが絶品との口コミあり。コーヒー豆はやや酸味が強め。ソウルの喧騒を離れて江陵観光と合わせて訪問したいショップ。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,
+   area:"江陵",note:"⚠️ ソウルではなく江陵（カンヌン）です。KTXソウル駅から約2時間。",
+   url:"https://share.google/fVTmwFHi5iKM3G4Nw",
+   subway:"江陵駅からタクシー約10分",
+   ig:"lebonmasel",
+   gmap:"https://maps.google.com/?q=37.7569321,128.8933624",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:88,name:"wolhwa station（ウォルファステーション）",nameEn:"Wolhwa Station Seongsu",emoji:"🌙",cat:"shop",
+   lat:37.5440,lng:127.0560,
+   hours:"要確認（インスタ参照）",address:"城東区 聖水洞（聖水駅エリア）",
+   desc:"聖水洞エリアの人気雑貨ショップ。月と花をテーマにした美しいディスプレイとセンスあるアイテムが揃う。韓国らしいデザインのインテリア雑貨・小物・アクセサリーなど。聖水洞散策（KITH・29CM・アディダス等）と合わせて立ち寄りやすいエリアに位置する。",
+   wait:"⏱️ 通常は待ちなし。",isHot:false,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞（ソンスドン）エリアです",
+   url:"https://www.instagram.com/wolhwa._.station",
+   subway:"2号線 聖水駅 4番出口 徒歩圏内",
+   ig:"wolhwa._.station",
+   gmap:"https://maps.google.com/?q=37.5440,127.0560",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}
+
+  ,{id:89,name:"겨울이 머무는 집（サモエドカフェ）",nameEn:"Winters Village Samoyed Cafe Hongdae",emoji:"🐕",cat:"cafe",
+   lat:37.5499182,lng:126.9218476,
+   hours:"月・水〜日 13:00〜21:00（最終入場20:00）（火曜定休）",address:"麻浦区 臥牛山路17キル 19-5（弘大・上水エリア）",
+   desc:"真っ白でもふもふのサモエドたちと触れ合える弘大の人気ドッグカフェ。日本の原宿にも姉妹店あり（超！サモエドカフェ）。入場料12,000〜15,000ウォンで時間制限なし。2フロア構成で各フロアにふれあいスペースあり。ドッグスナックで犬たちを呼ぶことができる。店内ルールはInstagramで事前確認推奨。サモエドの休憩タイム（14:50〜15:10・17:20〜17:40・19:30〜19:50）は犬との触れ合い不可なのでこの時間を避けて訪問を。10歳未満のお子さんは入場不可。コインロッカー完備。",
+   wait:"⏱️ 予約制（事前決済あり）。テーブルチェック（公式サイト）から予約推奨。当日来店は入れない場合あり。",isHot:true,
+   area:"弘大・上水",note:"⚠️ 狎鴎亭ではなく弘大・上水エリアです",
+   url:"https://mouda.jp/I0015738",
+   subway:"6号線 上水駅 1番出口 徒歩5分 / 弘大入口駅から徒歩約15分",
+   ig:"kyeoulimemuneunju",
+   gmap:"https://maps.google.com/?q=37.5499182,126.9218476",
+   catchtable:{status:'ng',note:'テーブルチェック（公式サイト）から予約・事前決済が必要。CATCHTABLEは非対応。',url:'https://cho-samoyed.jp/'}}  ,{id:90,name:"mirei（ミレイ）明洞",nameEn:"Mirei Dessert Atelier Myeongdong",emoji:"🎀",cat:"cafe",
+   lat:37.5603,lng:126.9821,
+   hours:"火〜日 12:00〜19:00（月曜定休）",address:"中区 小公路6キル 13 B1F（会賢洞2街 31-1）",
+   desc:"2024年秋オープンの大人の隠れ家デザートアトリエ。B1Fというロケーションながら、ほの暗い照明・ブラック×メタルのモダンなインテリアが映画のワンシーンのよう。ショーケースにはキッチュで美しいスイーツが並ぶ。シグネチャードリンク「ミュー」（手作りゼリー＋ライチ＆ピーチスパークリング）、「ビアンコミルク」（ホワイトチョコ×バニラビーンズ×メレンゲ）が人気。季節限定パフェも絶品。カクテルのようなドリンクが目当てで訪れる人も多い。TikTokで「見たことない空間」と話題沸騰中。",
+   wait:"⏱️ 開店直後は比較的空いている。夕方は混雑することも。",isHot:true,
+   area:"明洞",note:"⚠️ 狎鴎亭ではなく明洞エリアです（B1F）",
+   url:"https://vt.tiktok.com/ZSQhuySGr/",
+   subway:"4号線 明洞駅 7番出口 徒歩5分 / 2号線 乙支路入口駅 7番出口 徒歩5分",
+   ig:"mirei_seoul",
+   gmap:"https://maps.google.com/?q=37.5603,126.9821",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。ケーキのオーダーはInstagram DMから。',url:''}}  ,{id:91,name:"LADOR（ラドール）聖水フラッグシップ",nameEn:"LADOR Seongsu Flagship Store",emoji:"💆",cat:"shop",
+   lat:37.5441,lng:127.0562,
+   hours:"水〜日 11:00〜20:00（月・火曜定休、祝日定休）",address:"城東区 聖水洞2街 277-56（聖水駅2番出口 徒歩約3分）",
+   desc:"2007年韓国発サロン専用ブランドとして誕生し現在30カ国以上で愛されるヘアケアブランドLADORの聖水フラッグシップ。プールサイドを彷彿とさせるおしゃれな外観が目印。店内にはバスルームをモチーフにしたフォトスポットあり。テスターが充実していて香りを全種類試せる。日本語OKスタッフが常駐しており、髪質の悩みや香りの好みを相談しながらひとりでも安心してショッピングできる。SNSで話題の「パフュームヘアオイル」は香水のような香りで「髪に塗る香水」と呼ばれるほど。新作すずらんの香り「エンジェルミュゲ（Angel Muguet）」が特に人気。日本未発売アイテム・限定商品も多数。聖水駅の反対側2番出口なので最初か帰りに立ち寄るのが効率的。",
+   wait:"⏱️ 通常は待ちなし。週末は混雑することも。",isHot:true,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞（聖水駅2番出口）エリアです",
+   url:"https://kou-tripdiary.com/seongsu-lador/2521/",
+   subway:"2号線 聖水駅 2番出口 徒歩約3分",
+   ig:"reel/C9zrckPPm79/?igsh=MW05engwd281dnV2OQ==",
+   gmap:"https://maps.google.com/?q=37.5441,127.0562",
+   catchtable:{status:'ng',note:'予約不要・ウォークインのみ。',url:''}}  ,{id:92,name:"ジョジョカルグクス 聖水店",nameEn:"Jojo Kalguksu Seongsu",emoji:"🍥",cat:"food",
+   lat:37.5449,lng:127.0561,
+   hours:"10:00〜21:30（年中無休）",address:"城東区 聖水1路8キル 55（聖水洞）",
+   desc:"大邱に本店を構えるカルグクス名店の聖水2号店（2023年オープン）。シオフキ貝（ハマグリより正三角形に近い厚みある貝）がたっぷり入った濃厚な貝出汁スープが絶品。もちもちの手打ち麺に貝の旨味がしっかり染み込む。辛さは3段階で調整可能（普通はやや辛め）。サイドの真蛸入り海鮮チヂミ（13,000ウォン）は薄い生地でカリカリもちもち、ニラ入りで少しピリ辛。チヂミ専用タレは酢醤油・コチュジャン・ワサビ醤油の3種付き。アレンジ技：貝を一口食べたら貝出汁スープをカルグクスに注いでボリュームアップ！芸能人のサインが壁を飾る。1人利用OK。日本語ウェイティング機（韓国の電話番号不要）で日本語予約が可能になった。サイズは大きめなので1人でカルグクス+チヂミは完食ギリギリレベル。",
+   wait:"⏱️ 昼・夕方は行列必至。店頭の日本語対応ウェイティング機で順番取りが可能（韓国の電話番号不要）。16時台が比較的空いている。",isHot:true,
+   area:"聖水洞",note:"⚠️ 狎鴎亭ではなく聖水洞エリアです",
+   url:"https://pivim.jp/article/detail/kRVeykmARhU=/",
+   subway:"2号線 聖水駅 2番出口 徒歩約5分",
+   ig:"p/C-6vtKNScaj/?img_index=5&igsh=OXcwc3Z5eGR5djJ1",
+   gmap:"https://maps.google.com/?q=37.5449,127.0561",
+   catchtable:{status:'ng',note:'店頭の日本語対応ウェイティング機（韓国の電話番号不要）で順番取りが可能。CATCHTABLEは非対応。',url:''}}
+];
+const allStores = stores;
+
+const catColors={cafe:"#c0392b",bakery:"#e67e22",food:"#2980b9",shop:"#8e44ad"};
+let map, markers=[], activeCat="all", userLat=null, userLng=null, userMarker=null, accCircle=null;
+let wonRate=null;
+
+function catLabel(c){return{cafe:"カフェ",bakery:"ベーカリー",food:"グルメ",shop:"ショップ"}[c]||c}
+
+function calcDist(la1,ln1,la2,ln2){
+  const R=6371000,dL=(la2-la1)*Math.PI/180,dG=(ln2-ln1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function fmtDist(m){return m<1000?Math.round(m)+"m":(m/1000).toFixed(1)+"km"}
+
+function showToast(msg,dur=2500){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),dur);
+}
+
+function initMap(){
+  map = new google.maps.Map(document.getElementById("map"),{
+    center:{lat:37.5253,lng:127.0365},
+    zoom:14,
+    mapTypeControl:false,
+    streetViewControl:false,
+    fullscreenControl:false,
+    zoomControl:true
+  });
+  renderMarkers();
+  fetchWonRate();
+}
+
+function makeIcon(s){
+  const c=catColors[s.cat];
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48"><path d="M20 0C9 0 0 9 0 20c0 15 20 28 20 28s20-13 20-28C40 9 31 0 20 0z" fill="${c}" stroke="white" stroke-width="2.5"/><text x="20" y="27" text-anchor="middle" font-size="17">${s.emoji}</text></svg>`;
+  return {url:"data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svg))),scaledSize:new google.maps.Size(40,48),anchor:new google.maps.Point(20,48)};
+}
+
+function renderMarkers(){
+  markers.forEach(m=>m.setMap(null));
+  markers=[];
+  const vis=allStores.filter(s=>activeCat==="all"||s.cat===activeCat);
+  document.getElementById("countBadge").textContent=vis.length+" 件";
+  vis.forEach(s=>{
+    const marker=new google.maps.Marker({
+      position:{lat:s.lat,lng:s.lng},
+      map:map,
+      icon:makeIcon(s),
+      title:s.name
+    });
+    marker.addListener("click",()=>openPanel(s.id));
+    markers.push(marker);
+  });
+}
+
+function filterCat(cat,el){
+  activeCat=cat;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  renderMarkers();
+}
+
+function getNearby(excludeId,limit=4){
+  if(userLat===null)return[];
+  return allStores.filter(s=>s.id!==excludeId)
+    .map(s=>({...s,dist:calcDist(userLat,userLng,s.lat,s.lng)}))
+    .sort((a,b)=>a.dist-b.dist).slice(0,limit);
+}
+
+function openPanel(id){
+  const s=allStores.find(x=>x.id===id);if(!s)return;
+  const dist=userLat!==null?calcDist(userLat,userLng,s.lat,s.lng):null;
+  const nearby=getNearby(id);
+  document.getElementById("panelContent").innerHTML=`
+    <div class="ph">
+      <div class="pemoji">${s.emoji}</div>
+      <div style="flex:1">
+        <div class="ptitle">${s.name}</div>
+        <div class="pname-en">${s.nameEn}</div>
+        <div class="badges">
+          <span class="badge bc">${catLabel(s.cat)}</span>
+          ${s.area?`<span class="badge bc">${s.area}</span>`:""}
+          ${s.isHot?'<span class="badge bh">🔥 人気店</span>':""}
+          ${s.wait?'<span class="badge bw">⏱️ 行列情報</span>':""}
+          ${dist!==null?`<span class="badge bd">📍 ${fmtDist(dist)}</span>`:""}
+          ${s.catchtable?.status==='ok'?'<span class="badge" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7">✅ CT予約可</span>':s.catchtable?.status==='ng'?'<span class="badge" style="background:#f5f5f5;color:#757575;border:1px solid #e0e0e0">❌ CT非対応</span>':'<span class="badge" style="background:#fff8e8;color:#f57f17;border:1px solid #ffd54f">⚠️ CT要確認</span>'}
+        </div>
+      </div>
+    </div>
+    ${s.note?`<div class="note-box">${s.note}</div>`:""}
+    <div class="igrid">
+      <div class="ibox"><div class="ibox-label">🕐 営業時間</div><div class="ibox-val">${s.hours}</div></div>
+      <div class="ibox"><div class="ibox-label">📍 住所</div><div class="ibox-val">${s.address}</div></div>
+    </div>
+    <div class="dsec"><div class="dlabel">✨ お店の特徴</div><div class="dtext">${s.desc}</div></div>
+    ${s.wait?`<div class="wsec"><div class="wlabel">⏱️ 待ち時間の目安</div><div class="wtext">${s.wait}</div></div>`:""}
+    ${s.catchtable?`<div class="ctsec ${s.catchtable.status}">
+      <div class="ct-label">${s.catchtable.status==='ok'?'✅ CATCHTABLE 予約・ウェイティング可':s.catchtable.status==='ng'?'❌ CATCHTABLE 非対応（ウォークインのみ）':'⚠️ CATCHTABLE 対応状況 不明'}</div>
+      <div class="ct-text">${s.catchtable.note}</div>
+      ${s.catchtable.url?`<button class="ct-btn" onclick="openCatchtable('${s.catchtable.url}')">📱 CATCHTABLEで予約・ウェイティング登録</button>`:""}
+    </div>`:""}
+    ${s.subway?`<div class="subway-box"><div class="subway-icon">🚇</div><div><div class="subway-label">最寄り駅</div><div class="subway-text">${s.subway}</div></div></div>`:""}
+    <div class="action-row">
+      <a class="action-btn btn-gmap" href="${s.gmap||'https://maps.google.com/?q='+s.lat+','+s.lng}" target="_blank">🗺️ Googleマップで開く</a>
+      ${s.ig?`<a class="action-btn btn-ig" href="https://www.instagram.com/${s.ig}" target="_blank">${s.ig.startsWith('popular/')||s.ig.startsWith('reel/')||s.ig.startsWith('p/')?'📸 Instagramで見る':'📸 Instagram'}</a>`:`<span class="action-btn btn-ig-dis">📸 Instagram なし</span>`}
+    </div>
+    <div class="calc-sec">
+      <div class="calc-label">💱 ウォン換算電卓</div>
+      <div class="calc-row">
+        <input class="calc-input" id="wonInput_${s.id}" type="number" placeholder="₩ 金額" oninput="calcWon(${s.id})"/>
+        <span style="font-size:18px;color:#f57f17;font-weight:700;flex-shrink:0">＝</span>
+        <div class="calc-result" id="wonResult_${s.id}">— 円</div>
+      </div>
+      <div class="calc-note" id="wonRate_${s.id}">レート取得中…</div>
+    </div>
+    ${s.url?`<a class="src-link" href="${s.url}" target="_blank">🔗 詳しい情報を見る（外部サイト）</a>`:""}
+    ${nearby.length?`<div class="nsec">
+      <div class="nlabel">📍 現在地から近い他のお店</div>
+      ${nearby.map(n=>`<div class="nitem" onclick="closePanel();setTimeout(()=>openPanel(${n.id}),300)">
+        <span>${n.emoji} ${n.name}</span><span class="nitem-dist">${fmtDist(n.dist)}</span>
+      </div>`).join("")}
+    </div>`:""}
+  `;
+  document.getElementById("panel").classList.add("open");
+  document.getElementById("overlay").classList.add("active");
+  map.panTo({lat:s.lat,lng:s.lng});
+  map.setZoom(16);
+}
+
+function openCatchtable(webUrl){
+  // Open Global CATCHTABLE website directly
+  window.open(webUrl, '_blank');
+}
+
+function closePanel(){
+  document.getElementById("panel").classList.remove("open");
+  document.getElementById("overlay").classList.remove("active");
+}
+
+async function fetchWonRate(){
+  try{
+    const res=await fetch("https://open.er-api.com/v6/latest/KRW");
+    const data=await res.json();
+    if(data?.rates?.JPY) wonRate=data.rates.JPY;
+  }catch(e){wonRate=0.011;}
+}
+
+function calcWon(id){
+  const input=document.getElementById("wonInput_"+id);
+  const result=document.getElementById("wonResult_"+id);
+  const rateEl=document.getElementById("wonRate_"+id);
+  const won=parseFloat(input.value);
+  if(!wonRate){result.textContent="取得中";return;}
+  rateEl.textContent=`1₩ ≈ ${wonRate.toFixed(4)}円（リアルタイム）`;
+  if(isNaN(won)||input.value===""){result.textContent="— 円";return;}
+  result.textContent=Math.round(won*wonRate).toLocaleString()+" 円";
+}
+
+function locateMe(){
+  if(!navigator.geolocation){showToast("⚠️ 位置情報が使えません");return;}
+  const btn=document.getElementById("gpsBtn");
+  btn.textContent="⏳";
+  showToast("📡 現在地を取得中…",5000);
+  navigator.geolocation.getCurrentPosition(pos=>{
+    userLat=pos.coords.latitude;userLng=pos.coords.longitude;
+    const acc=pos.coords.accuracy;
+    if(userMarker)userMarker.setMap(null);
+    if(accCircle)accCircle.setMap(null);
+    accCircle=new google.maps.Circle({map,center:{lat:userLat,lng:userLng},radius:acc,strokeColor:"#1976d2",fillColor:"#42a5f5",fillOpacity:.12,strokeWeight:1.5});
+    userMarker=new google.maps.Marker({
+      position:{lat:userLat,lng:userLng},map,
+      icon:{url:"data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="8" fill="#1976d2" stroke="white" stroke-width="3"/></svg>'),scaledSize:new google.maps.Size(20,20),anchor:new google.maps.Point(10,10)},
+      title:"現在地",zIndex:1000
+    });
+    map.panTo({lat:userLat,lng:userLng});map.setZoom(16);
+    btn.classList.add("located");btn.textContent="🔵";
+    showToast(`📍 現在地取得（精度 ±${Math.round(acc)}m）`);
+  },err=>{
+    btn.textContent="📍";
+    const m={1:"⚠️ 位置情報の許可が必要です",2:"⚠️ 取得できませんでした",3:"⚠️ タイムアウト"};
+    showToast(m[err.code]||"⚠️ エラー",4000);
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
+
+const memoItems = [
+  {
+    id: 89, emoji: "🐕", name: "サモエドカフェ（겨울이 머무는 집）",
+    area: "弘大・上水",
+    text: "チワワが同じスペースにいることがあり、噛む可能性アリ。事前にインスタで確認してから訪問を。サモエドは真っ白でもふもふで最高！予約制なので必ず事前予約してから行くこと。"
+  },
+  {
+    id: 85, emoji: "🦴", name: "24時ピョダギカムジャタン",
+    area: "漢南洞",
+    text: "超大人気店なので予約必須！CATCHTABLEでウェイティング登録できます。普通のカムジャタンと汁なしのカムジャタン（ピョーチム）がありますが、汁なしが最も美味しいとの声多数。基本どれ食べても美味しい。"
+  },
+  {
+    id: 79, emoji: "🌙", name: "Juuneedu（パジャマ屋）",
+    area: "明洞・聖水洞・延南洞",
+    text: "明洞・聖水洞・延南洞の3ヶ所にMAP入りあり。パジャマ専門店でふわふわ素材が最高。スタッフ全員がパジャマ着用で接客してくれるのがかわいい。"
+  },
+  {
+    id: 75, emoji: "🍜", name: "ベテラン カルグクス（ロッテ本店地下）",
+    area: "明洞",
+    text: "ロッテ百貨店地下1階フードコートに出店している通のみが知る名店。なぜかフードコートに出店していて穴場。卵とじスープで優しい味わい。大きめサイズ。キムチなどで胃が疲れたらオススメ！餃子も美味しいらしい。"
+  },
+  {
+    id: 74, emoji: "🍩", name: "ABEBE BAKERY（アベベベーカリー）",
+    area: "広蔵市場エリア",
+    text: "広蔵市場近くのクリームパン（ドーナツ形）専門店。メニューが多くて全部美味しいとの声。人気急上昇中なので早めの時間帯に行くのがオススメ。きな粉餅入りが特に絶品！"
+  },
+  {
+    id: 73, emoji: "☕", name: "ZACAFFE（ザカフェ）明洞",
+    area: "明洞",
+    text: "世界に3つしかないZARAのカフェ。無機質でオシャレな空間。1・2階がファッション、3階にカフェあり。ソウル限定のスジョンガラテが飲めるのはここだけ！"
+  },
+  {
+    id: 72, emoji: "💎", name: "NOBLECOCO（ノーブルココ）",
+    area: "狎鴎亭ロデオ",
+    text: "狎鴎亭ロデオ通りにあるシャネルなどハイブランドのセレクトショップ。比較的安い。ただし偽物の可能性もあるので、もし買いたいものがあればしっかり確認してから購入を！"
+  },
+  {
+    id: 71, emoji: "🍱", name: "GOURMET494（ギャラリア百貨店地下）",
+    area: "狎鴎亭",
+    text: "ギャラリア名品館WEST地下1階はソウル最高の高級フードホール。朝食用・軽食用に見て回ると良い。近くにはキンパの人気店「ロボットキンパ」や「スアダン」もあるのでホテル用テイクアウトにも使える！"
+  },
+  {
+    id: 47, emoji: "⚽", name: "アディダスフラッグシップ 明洞",
+    area: "明洞",
+    text: "オリジナルのカスタマイズTシャツやスニーカーが作れる数少ない店舗。友達へのお土産や自分用に超オススメ。ハングルロゴ入りアイテムはここでしか作れない！"
+  },
+  {
+    id: 44, emoji: "🛍️", name: "漢南洞（ハンナムドン）エリア",
+    area: "漢南洞",
+    text: "明洞の南にあるエリアで、日本の代官山と中目黒みたいな落ち着いたショッピング街。細道や裏道にアパレルが数多くあり、散歩しながら目についたショップに入っていく感じで回るのが楽しい。値段高めの良い商品からプチプラ可愛いものまで揃う。2026年注目エリア！"
+  },
+  {
+    id: 40, emoji: "👗", name: "MUSINSA STORE 明洞",
+    area: "明洞",
+    text: "とにかくでかいショッピングビル。大量のスニーカーの棚が圧巻。コスメも置いてある。スニーカー好きは絶対行くべき！"
+  },
+  {
+    id: 3, emoji: "🧡", name: "エルメスカフェ（MAISON HERMÈS）",
+    area: "狎鴎亭",
+    text: "人気につき並ばないと入れないかもしれないがオススメ。写真映え最高。テーブル数少なめなので開店直後に行くのが確実。アフタヌーンティーが特に人気。"
+  },
+  {
+    id: 13, emoji: "🐻", name: "Teddy Beurre House（ザ現代ソウル）",
+    area: "汝矣島",
+    text: "汝矣島駅直結で行けるテディベアだらけの人気ベーカリーカフェ。とにかくかわいい！チュロスクロワッサンが絶品。開店直後に行くのがおすすめ。"
+  },
+  {
+    id: 1, emoji: "🎀", name: "ハローキティカフェ 明洞",
+    area: "明洞",
+    text: "明洞にある。めちゃくちゃ可愛くて写真映え最高。CATCHTABLEの整理券を事前に取っておくとスムーズに入れる。"
+  },
+  {
+    id: 28, emoji: "🫙", name: "テヤンコプチャン 聖水洞",
+    area: "聖水洞",
+    text: "ヤチェコプチャン（野菜コプチャン）にチャプチェが入っていてとても美味しいらしい。辛ラーメンの半分くらいの辛さ。24時間営業なので深夜が穴場！"
+  },
+  {
+    id: 45, emoji: "👓", name: "HAUS NOWHERE SEOUL 聖水洞",
+    area: "聖水洞",
+    text: "巨大ダックスフンド（全長13メートル！）が話題のファッションビル。写真映え最高。Gentle Monster・TAMBURINS・NUDAKEが入る体験型アートビル。"
+  },
+  {
+    id: 24, emoji: "🐕", name: "Bitte Dosan 狎鴎亭",
+    area: "狎鴎亭",
+    text: "トイプードルが2匹看板犬としているカフェ。4Fからの眺めも良くておしゃれなブランチが楽しめる。犬好きには最高の空間！"
+  },
+  {
+    id: 26, emoji: "🍞", name: "ミルトースト 益善洞",
+    area: "益善洞",
+    text: "益善洞（イクソンドン）にあるスチーム食パンカフェ。古民家みたいな造りで落ち着く。ロッテ百貨店・明洞エリアから少し北東。行列必至なのでCATCHTABLEで事前番号取りを！"
+  },
+  {
+    id: 29, emoji: "🍖", name: "芳荑豚家（パンイドンガ）",
+    area: "清潭洞",
+    text: "狎鴎亭にあるサムギョプサル屋。IKKOさんおすすめ！カブリサルという油の少ないサムギョプサルをネギたっぷりのタレにつけて食べるさっぱり系がマジで美味しいらしい。週末は予約必須！"
+  },
+  {
+    id: 5, emoji: "☕", name: "BACHA COFFEE 清潭",
+    area: "狎鴎亭",
+    text: "狎鴎亭にあるラグジュアリーカフェ。写真映えするしコーヒーが美味しい。バシャクロワッサンもオススメ！入店時に並ぶ可能性あり。"
+  },
+  {
+    id: 11, emoji: "🥞", name: "신사전 / Sinsajeon 新沙洞",
+    area: "新沙洞",
+    text: "新沙洞のチヂミ＆マッコリの名店。ハチミツの巣をそのままマッコリに入れて飲む「蜂蜜マッコリ」が女子に圧倒的人気で写真映えも◎。庶民的居酒屋スタイル。人気店なので待ち時間あり。夕方6〜8時は特に混雑。"
+  }
+];
+
+function openMemo(){
+  const body=document.getElementById("memoBody");
+  body.innerHTML=memoItems.map(item=>`
+    <div class="memo-item">
+      <div class="memo-item-header">
+        <span class="memo-item-emoji">${item.emoji}</span>
+        <span class="memo-item-name">${item.name}</span>
+        <button class="memo-map-btn" onclick="jumpToStore(${item.id})">🗺️ MAPへ</button>
+      </div>
+      <div class="memo-item-area">📍 ${item.area}</div>
+      <div class="memo-item-text">${item.text}</div>
+    </div>
+  `).join("");
+  document.getElementById("memoPage").classList.add("open");
+}
+
+function closeMemo(){
+  document.getElementById("memoPage").classList.remove("open");
+}
+
+function jumpToStore(id){
+  closeMemo();
+  const store=allStores.find(s=>s.id===id);
+  if(!store)return;
+  setTimeout(()=>{
+    map.panTo({lat:store.lat,lng:store.lng});
+    map.setZoom(17);
+    openPanel(id);
+  },300);
+}
+</script>
+
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDOyIJu8hhQNA7f9Imzez67-x1HGf-wuQs&language=ja&region=KR&callback=initMap">
+</script>
+</body>
+</html>
