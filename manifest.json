@@ -1,0 +1,24 @@
+{
+  "name": "ソウル 行きたいお店MAP",
+  "short_name": "ソウルMAP",
+  "description": "韓国ソウル旅行の行きたいお店マップ",
+  "start_url": "./seoul-map.html",
+  "display": "standalone",
+  "background_color": "#1a1410",
+  "theme_color": "#1a1410",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
